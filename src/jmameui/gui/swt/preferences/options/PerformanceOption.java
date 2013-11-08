@@ -6,7 +6,7 @@ import jmameui.mame.MameExecutable;
 
 import org.eclipse.swt.widgets.Group;
 
-public class PerformanceOption extends IniOption{
+public class PerformanceOption extends IniOption {
     public PerformanceOption(Group owner, GuiControls g, MameExecutable me) {
 	setGroup(owner);
 	setmExec(me);
@@ -16,7 +16,12 @@ public class PerformanceOption extends IniOption{
     }
 
     private void initUI() {
-	// TODO Auto-generated method stub
+
+	createCheckBox("Multi Threading", "multithreading");
+	createCheckBox("Sdl Video FPS", "sdlvideofps");
+	CreateIntSpinner("Number Processors", "numprocessors", Runtime
+		.getRuntime().availableProcessors());
+	CreateIntSpinner("Bench", "bench", 10000);
 	
     }
 }

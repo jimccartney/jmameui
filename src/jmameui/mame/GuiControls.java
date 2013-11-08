@@ -201,7 +201,6 @@ public class GuiControls {
      *         available
      */
     private TreeSet<MameRom> createMameRoms() throws IOException {
-	Long Start = System.currentTimeMillis();
 	TreeSet<MameRom> out = new TreeSet<MameRom>();
 	ArrayList<String> favs = FileIO.readFile(favourites);
 	ArrayList<String> lines = FileIO.readFile(goodGames);
@@ -240,7 +239,6 @@ public class GuiControls {
 	    }
 	    out.add(m);
 	}
-	System.out.println(System.currentTimeMillis() - Start);
 	return out;
     }
 

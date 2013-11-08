@@ -4,7 +4,6 @@ import jmameui.mame.FileIO;
 import jmameui.mame.GuiControls;
 import jmameui.mame.MameExecutable;
 
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Group;
 
 public class VideoOptions extends IniOption {
@@ -18,8 +17,6 @@ public class VideoOptions extends IniOption {
 	}
 
 	private void initUI() {
-		getGroup().setLayout(new GridLayout(2, false));
-
 		createMameCombo("Video","video", new String[] { "opengl", "soft" });
 		createMameCombo("Num Screens","numscreens", new String[] { "1" });
 		createMameCombo("Scale Mode","scalemode", new String[] { "none", "async", "yv12",
