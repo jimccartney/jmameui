@@ -14,11 +14,14 @@
  * You should have received a copy of the GNU General Public License
  * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
  */
-package jmameui.gui.swt.preferences;
+package jmameui.gui.swt.preferences.options;
 
 import java.io.File;
 import java.util.ArrayList;
 
+import jmameui.gui.swt.preferences.widgets.MameCombo;
+import jmameui.gui.swt.preferences.widgets.MamePathComp;
+import jmameui.gui.swt.preferences.widgets.MameSpinner;
 import jmameui.mame.FileIO;
 import jmameui.mame.GuiControls;
 import jmameui.mame.MameExecutable;
@@ -34,6 +37,7 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.DirectoryDialog;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.Text;
 
 public class IniOption {
@@ -103,7 +107,17 @@ public class IniOption {
 	}
     };
 
-    public void createMameCombo(String name,String mameOption, String[] items) {
+    private SelectionAdapter doubleSpinnerAdapter = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent e) {
+	    Spinner spin = (Spinner) e.widget;
+	    MameSpinner ms = (MameSpinner) spin.getParent();
+
+	    gCon.changeMameIniValue(iniFile, ms.getMameOption(), spin.getText());
+	    writeIni();
+	};
+    };
+
+    public void createMameCombo(String name, String mameOption, String[] items) {
 	MameCombo mc = new MameCombo(group, SWT.READ_ONLY);
 	Combo combo = mc.getCombo();
 	combo.setItems(items);
@@ -123,7 +137,7 @@ public class IniOption {
 	mc.setOption(mameOption);
     }
 
-    public void createCheckBox(String name,String mameOption) {
+    public void createCheckBox(String name, String mameOption) {
 	Button btn = new Button(group, SWT.CHECK);
 	btn.setText(name);
 	String iniOp = gCon.getMameIniValue(iniFile, mameOption);
@@ -138,7 +152,7 @@ public class IniOption {
 	btn.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 2, 1));
     }
 
-    public void createText(String name,String mameOption) {
+    public void createText(String name, String mameOption) {
 	createLabel(name);
 	Text txt = new Text(group, SWT.BORDER);
 	String iniOp = gCon.getMameIniValue(iniFile, mameOption);
@@ -168,7 +182,25 @@ public class IniOption {
 	mpc.setLabelText(name);
 	mpc.getButton().addSelectionListener(mamePathListener);
 	mpc.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
+    }
 
+    public void CreateDoubleSpinner(String name, String mameOption, int maxValue) {
+	MameSpinner ms = new MameSpinner(group, SWT.BORDER,
+		MameSpinner.DOUBLE_SPINNER);
+	Spinner spin = ms.getSpin();
+	ms.setLabelText(name);
+
+	ms.setMameOption(mameOption);
+	String iniOp = gCon.getMameIniValue(iniFile, ms.getMameOption());
+	if (iniOp.equals("")) {
+	    spin.setEnabled(false);
+	} else {
+	    spin.setSelection((int) ((new Double(iniOp).doubleValue()) * 10));
+	    spin.setMaximum(maxValue*10);
+	}
+	
+	spin.addSelectionListener(doubleSpinnerAdapter);
+	ms.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
     }
 
     public void createLabel(String name) {

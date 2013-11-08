@@ -1,4 +1,4 @@
-package jmameui.gui.swt.preferences;
+package jmameui.gui.swt.preferences.options;
 
 import java.io.File;
 import java.util.ArrayList;

@@ -16,6 +16,9 @@
  */
 package jmameui.gui.swt.preferences;
 
+import jmameui.gui.swt.preferences.options.JMameMSetTab;
+import jmameui.gui.swt.preferences.options.OutputDirOption;
+import jmameui.gui.swt.preferences.options.VideoOptions;
 import jmameui.mame.GuiControls;
 import jmameui.mame.MameExecutable;
 

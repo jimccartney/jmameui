@@ -1,4 +1,4 @@
-package jmameui.gui.swt.preferences;
+package jmameui.gui.swt.preferences.options;
 
 import jmameui.mame.FileIO;
 import jmameui.mame.GuiControls;

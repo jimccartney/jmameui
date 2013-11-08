@@ -1,4 +1,4 @@
-package jmameui.gui.swt.preferences;
+package jmameui.gui.swt.preferences.widgets;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
