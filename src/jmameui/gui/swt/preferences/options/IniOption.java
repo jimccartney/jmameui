@@ -75,15 +75,6 @@ public class IniOption {
 	}
     };
 
-    private ModifyListener textAdapter = new ModifyListener() {
-	public void modifyText(ModifyEvent e) {
-	    Text txt = (Text) e.widget;
-	    String option = txt.getToolTipText();
-	    gCon.changeMameIniValue(iniFile, option, txt.getText());
-	    writeIni();
-	}
-    };
-
     private SelectionAdapter mamePathListener = new SelectionAdapter() {
 	public void widgetSelected(SelectionEvent e) {
 	    Button btn = (Button) e.widget;
@@ -108,6 +99,16 @@ public class IniOption {
     };
 
     private SelectionAdapter doubleSpinnerAdapter = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent e) {
+	    Spinner spin = (Spinner) e.widget;
+	    MameSpinner ms = (MameSpinner) spin.getParent();
+
+	    gCon.changeMameIniValue(iniFile, ms.getMameOption(), spin.getText());
+	    writeIni();
+	};
+    };
+    
+    private SelectionAdapter intSpinnerAdapter = new SelectionAdapter() {
 	public void widgetSelected(SelectionEvent e) {
 	    Spinner spin = (Spinner) e.widget;
 	    MameSpinner ms = (MameSpinner) spin.getParent();
@@ -152,21 +153,6 @@ public class IniOption {
 	btn.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 2, 1));
     }
 
-    public void createText(String name, String mameOption) {
-	createLabel(name);
-	Text txt = new Text(group, SWT.BORDER);
-	String iniOp = gCon.getMameIniValue(iniFile, mameOption);
-	if (iniOp.equals("")) {
-	    txt.setEnabled(false);
-	} else {
-	    txt.setText(iniOp);
-	}
-
-	txt.setToolTipText(mameOption);
-	txt.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1));
-	txt.addModifyListener(textAdapter);
-    }
-
     public void createMamePathComp(String name, String MameOption) {
 	MamePathComp mpc = new MamePathComp(group, SWT.BORDER);
 	Text txt = mpc.getText();
@@ -200,7 +186,26 @@ public class IniOption {
 	}
 	
 	spin.addSelectionListener(doubleSpinnerAdapter);
-	ms.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
+	ms.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+    }
+    
+    public void CreateIntSpinner(String name, String mameOption, int maxValue) {
+	MameSpinner ms = new MameSpinner(group, SWT.BORDER,
+		MameSpinner.INT_SPINNER);
+	Spinner spin = ms.getSpin();
+	ms.setLabelText(name);
+
+	ms.setMameOption(mameOption);
+	String iniOp = gCon.getMameIniValue(iniFile, ms.getMameOption());
+	if (iniOp.equals("")) {
+	    spin.setEnabled(false);
+	} else {
+	    spin.setSelection(new Integer(iniOp).intValue());
+	    spin.setMaximum(maxValue);
+	}
+	
+	spin.addSelectionListener(intSpinnerAdapter);
+	ms.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
     }
 
     public void createLabel(String name) {
@@ -245,5 +250,4 @@ public class IniOption {
     public void setGroup(Group group) {
 	this.group = group;
     }
-
 }

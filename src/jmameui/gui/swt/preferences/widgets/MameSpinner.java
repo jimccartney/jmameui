@@ -24,10 +24,10 @@ public class MameSpinner extends Composite {
 
     private void initUI(int option) {
 	label = new Label(this, SWT.NONE);
-	label.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
+	label.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
 
-	spin = new Spinner(this, SWT.NONE);
-	spin.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+	spin = new Spinner(this, SWT.BORDER);
+	spin.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 	
 	if (option == DOUBLE_SPINNER) {
 	    spin.setDigits(1);

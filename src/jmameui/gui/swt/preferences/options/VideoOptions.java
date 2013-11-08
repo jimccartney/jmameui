@@ -4,7 +4,6 @@ import jmameui.mame.FileIO;
 import jmameui.mame.GuiControls;
 import jmameui.mame.MameExecutable;
 
-import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Group;
 
@@ -33,7 +32,6 @@ public class VideoOptions extends IniOption {
 		createCheckBox("Sync Refresh","syncrefresh");
 		createCheckBox("Wait Vsync","waitvsync");
 		CreateDoubleSpinner("Uneven Stretch","unevenstretch", 10);
-		//createText("Uneven Stretch","unevenstretch");
 
 		getGroup().pack();
 	}
