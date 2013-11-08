@@ -1,7 +1,7 @@
 JMameUI
 =============
 Front end for sdlmame 
-![Startscreen](https://github.com/jamesmccartney/JMameUI/blob/master/screenshots/mainwindow.png?raw=true)
+![Startscreen](https://github.com/jimccartney/jmameui/blob/master/screenshots/mainwindow.png?raw=true)
 
 Requirements
 =============
