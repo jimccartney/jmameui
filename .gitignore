@@ -1,4 +1,5 @@
 *.class
+cpsrc
 
 # Package Files #
 *.jar
