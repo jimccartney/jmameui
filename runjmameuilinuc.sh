@@ -1,2 +1,2 @@
 cd bin
-java -cp .:lib/ jmameui.gui.swt.JMameUI 
+java -cp .:../lib/ jmameui.gui.swt.JMameUI 

@@ -13,5 +13,7 @@ Compiling
 ==============
 Linux
 --------------
-  Make sure SWT jar is in Java classpath, or add SWT path to makefile $JFLAGS cp flag<br/>
-  sh makelinux.sh
+  If SWT is in classpath<br />
+  sh makelinux.sh<br />
+  or to download SWT<br />
+  sh swtmakelinux.sh<br />
