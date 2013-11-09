@@ -1,4 +1,4 @@
-JFLAGS = -cp .:src/ -d bin
+JFLAGS = -cp .:src/:lib/ -d bin
 JC = javac
 .SUFFIXES: .java .class
 .java.class:
