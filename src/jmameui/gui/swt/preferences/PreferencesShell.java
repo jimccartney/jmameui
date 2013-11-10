@@ -19,6 +19,7 @@ package jmameui.gui.swt.preferences;
 import jmameui.gui.swt.preferences.options.JMameMSetTab;
 import jmameui.gui.swt.preferences.options.OutputDirOption;
 import jmameui.gui.swt.preferences.options.PerformanceOption;
+import jmameui.gui.swt.preferences.options.RotationOption;
 import jmameui.gui.swt.preferences.options.SearchPathOption;
 import jmameui.gui.swt.preferences.options.StatePlaybackOption;
 import jmameui.gui.swt.preferences.options.VideoOptions;
@@ -94,6 +95,8 @@ public class PreferencesShell {
 		new SearchPathOption(group, Gcon, currExec);
 	    } else if (text.equals("State/Playback")) {
 		new StatePlaybackOption(group, Gcon, currExec);
+	    } else if (text.equals("Rotation")) {
+		new RotationOption(group, Gcon, currExec);
 	    }
 
 	    group.layout();
@@ -150,7 +153,7 @@ public class PreferencesShell {
 	mamePrefList.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false,
 		false, 1, 1));
 	mamePrefList.setItems(new String[] { "Output Directory", "Performance",
-		"Search Paths","State/Playback" ,"Video" });
+		"Rotation", "Search Paths", "State/Playback", "Video" });
 	mamePrefList.setSelection(0);
 
 	jMameMTab = new TabItem(jMameTabs, SWT.NONE);
