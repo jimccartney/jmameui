@@ -27,14 +27,13 @@ import jmameui.mame.GuiControls;
 import jmameui.mame.MameExecutable;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.ModifyEvent;
-import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.DirectoryDialog;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Spinner;
@@ -46,6 +45,9 @@ public class IniOption {
     private MameExecutable mExec;
     private ArrayList<String> iniFile;
     private Group group;
+    public static final int LOAD_DIALOG = 0;
+    public static final int DIRECTORY_DIALOG = 1;
+    public static final int SAVE_DIALOG = 2;
 
     private SelectionAdapter mameComboAdapter = new SelectionAdapter() {
 	public void widgetSelected(SelectionEvent arg0) {
@@ -75,7 +77,7 @@ public class IniOption {
 	}
     };
 
-    private SelectionAdapter mamePathListener = new SelectionAdapter() {
+    private SelectionAdapter mameDirPathListener = new SelectionAdapter() {
 	public void widgetSelected(SelectionEvent e) {
 	    Button btn = (Button) e.widget;
 	    MamePathComp mpc = (MamePathComp) btn.getParent();
@@ -98,6 +100,44 @@ public class IniOption {
 	}
     };
 
+    private SelectionAdapter mameSavePathListener = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent e) {
+	    Button btn = (Button) e.widget;
+	    MamePathComp mpc = (MamePathComp) btn.getParent();
+	    Text txt = mpc.getText();
+	    FileDialog dialog = new FileDialog(group.getShell(), SWT.SAVE);
+	    dialog.setText("Save file");
+	    dialog.setFilterPath(System.getProperty("user.home"));
+	    String newFile = dialog.open();
+	    if (newFile != null) {
+		txt.setText(newFile);
+
+		gCon.changeMameIniValue(iniFile, mpc.getOption(), txt.getText()
+			.replace(System.getProperty("user.home"), "$HOME"));
+		writeIni();
+	    }
+	}
+    };
+
+    private SelectionAdapter mameLoadPathListener = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent e) {
+	    Button btn = (Button) e.widget;
+	    MamePathComp mpc = (MamePathComp) btn.getParent();
+	    Text txt = mpc.getText();
+	    FileDialog dialog = new FileDialog(group.getShell(), SWT.OPEN);
+	    dialog.setText("Load file");
+	    dialog.setFilterPath(System.getProperty("user.home"));
+	    String newFile = dialog.open();
+	    if (newFile != null) {
+		txt.setText(newFile);
+
+		gCon.changeMameIniValue(iniFile, mpc.getOption(), txt.getText()
+			.replace(System.getProperty("user.home"), "$HOME"));
+		writeIni();
+	    }
+	}
+    };
+
     private SelectionAdapter doubleSpinnerAdapter = new SelectionAdapter() {
 	public void widgetSelected(SelectionEvent e) {
 	    Spinner spin = (Spinner) e.widget;
@@ -107,7 +147,7 @@ public class IniOption {
 	    writeIni();
 	};
     };
-    
+
     private SelectionAdapter intSpinnerAdapter = new SelectionAdapter() {
 	public void widgetSelected(SelectionEvent e) {
 	    Spinner spin = (Spinner) e.widget;
@@ -153,7 +193,7 @@ public class IniOption {
 	btn.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 2, 1));
     }
 
-    public void createMamePathComp(String name, String MameOption) {
+    public void createMamePathComp(String name, String MameOption, int option) {
 	MamePathComp mpc = new MamePathComp(group, SWT.BORDER);
 	Text txt = mpc.getText();
 
@@ -166,8 +206,18 @@ public class IniOption {
 	}
 
 	mpc.setLabelText(name);
-	mpc.getButton().addSelectionListener(mamePathListener);
 	mpc.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
+	
+	switch (option) {
+	case LOAD_DIALOG:
+	    mpc.getButton().addSelectionListener(mameLoadPathListener);
+	    break;
+	case SAVE_DIALOG:
+	    mpc.getButton().addSelectionListener(mameSavePathListener);
+	    break;
+	case DIRECTORY_DIALOG:
+	    mpc.getButton().addSelectionListener(mameDirPathListener);
+	}
     }
 
     public void CreateDoubleSpinner(String name, String mameOption, int maxValue) {
@@ -182,13 +232,13 @@ public class IniOption {
 	    spin.setEnabled(false);
 	} else {
 	    spin.setSelection((int) ((new Double(iniOp).doubleValue()) * 10));
-	    spin.setMaximum(maxValue*10);
+	    spin.setMaximum(maxValue * 10);
 	}
-	
+
 	spin.addSelectionListener(doubleSpinnerAdapter);
 	ms.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
     }
-    
+
     public void CreateIntSpinner(String name, String mameOption, int maxValue) {
 	MameSpinner ms = new MameSpinner(group, SWT.BORDER,
 		MameSpinner.INT_SPINNER);
@@ -203,7 +253,7 @@ public class IniOption {
 	    spin.setSelection(new Integer(iniOp).intValue());
 	    spin.setMaximum(maxValue);
 	}
-	
+
 	spin.addSelectionListener(intSpinnerAdapter);
 	ms.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
     }

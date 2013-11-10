@@ -16,15 +16,21 @@ public class OutputDirOption extends IniOption {
     }
 
     private void initUI() {
-	
-	createMamePathComp("Cfg Directory", "cfg_directory");
-	createMamePathComp("Nvram Directory", "nvram_directory");
-	createMamePathComp("Memcard Directory", "memcard_directory");
-	createMamePathComp("Input Directory", "input_directory");
-	createMamePathComp("State Directory", "state_directory");
-	createMamePathComp("Snapshot Directory", "snapshot_directory");
-	createMamePathComp("Diff Directory", "diff_directory");
-	createMamePathComp("Comment Directory", "comment_directory");
+
+	createMamePathComp("Cfg Directory", "cfg_directory", DIRECTORY_DIALOG);
+	createMamePathComp("Nvram Directory", "nvram_directory",
+		DIRECTORY_DIALOG);
+	createMamePathComp("Memcard Directory", "memcard_directory",
+		DIRECTORY_DIALOG);
+	createMamePathComp("Input Directory", "input_directory",
+		DIRECTORY_DIALOG);
+	createMamePathComp("State Directory", "state_directory",
+		DIRECTORY_DIALOG);
+	createMamePathComp("Snapshot Directory", "snapshot_directory",
+		DIRECTORY_DIALOG);
+	createMamePathComp("Diff Directory", "diff_directory", DIRECTORY_DIALOG);
+	createMamePathComp("Comment Directory", "comment_directory",
+		DIRECTORY_DIALOG);
 	getGroup().pack(true);
     }
 }

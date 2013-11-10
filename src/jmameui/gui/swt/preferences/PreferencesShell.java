@@ -16,8 +16,6 @@
  */
 package jmameui.gui.swt.preferences;
 
-import javax.naming.directory.SearchControls;
-
 import jmameui.gui.swt.preferences.options.JMameMSetTab;
 import jmameui.gui.swt.preferences.options.OutputDirOption;
 import jmameui.gui.swt.preferences.options.PerformanceOption;
