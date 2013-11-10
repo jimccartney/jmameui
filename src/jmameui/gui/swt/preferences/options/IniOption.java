@@ -38,7 +38,6 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.DirectoryDialog;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Group;
-import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.Text;
 
@@ -47,10 +46,24 @@ public class IniOption {
     private GuiControls gCon;
     private MameExecutable mExec;
     private ArrayList<String> iniFile;
+    private ArrayList<String> mameUsage;
     private Group group;
     public static final int LOAD_DIALOG = 0;
     public static final int DIRECTORY_DIALOG = 1;
     public static final int SAVE_DIALOG = 2;
+
+    public IniOption(Group owner, GuiControls g, MameExecutable me) {
+	group = owner;
+	mExec = me;
+	gCon = g;
+
+	iniFile = FileIO.readFile(me.getIniFile());
+	mameUsage = FileIO.getProcessOutput(me.getPath() + " -su", false);
+	initUI();
+    }
+
+    public void initUI() {
+    }
 
     private SelectionAdapter mameComboAdapter = new SelectionAdapter() {
 	public void widgetSelected(SelectionEvent arg0) {
@@ -184,13 +197,12 @@ public class IniOption {
 
 	if (iniOp == null) {
 	    combo.setEnabled(false);
-	    mc.getLabel().setToolTipText(
-		    "This option is not available in this version of Mame");
 	} else {
 	    combo.select(combo.indexOf(iniOp));
-	    mc.getLabel().setToolTipText(getToolTip(mameOption));
 
 	}
+	
+	mc.getLabel().setToolTipText(getToolTip(mameOption));
 	combo.addSelectionListener(mameComboAdapter);
 	mc.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 2, 1));
 	mc.setLabelText(name);
@@ -201,15 +213,14 @@ public class IniOption {
 	Button btn = new Button(group, SWT.CHECK);
 	btn.setText(name);
 	String iniOp = gCon.getMameIniValue(iniFile, mameOption);
-	btn.setToolTipText(getToolTip(mameOption));
 	if (iniOp == null) {
 	    btn.setEnabled(false);
-	    btn.setToolTipText("This option is not available in this version of Mame");
 	} else if (iniOp.equals("1")) {
 	    btn.setSelection(true);
 	} else {
 	    btn.setSelection(false);
 	}
+	btn.setToolTipText(getToolTip(mameOption));
 	btn.addSelectionListener(checkBoxAdapter);
 	btn.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 2, 1));
     }
@@ -223,15 +234,13 @@ public class IniOption {
 	if (iniOp == null) {
 	    txt.setEnabled(false);
 	    mpc.getButton().setEnabled(false);
-	    mpc.getLabel().setToolTipText(
-		    "This option is not available in this version of Mame");
 	} else {
 	    txt.setText(iniOp.replace("$HOME", System.getProperty("user.home")));
-	    mpc.getLabel().setToolTipText(getToolTip(mameOption));
 	}
 
+	mpc.getLabel().setToolTipText(getToolTip(mameOption));
 	mpc.setLabelText(name);
-	mpc.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
+	mpc.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 	txt.addModifyListener(TxtModifyListener);
 	switch (option) {
 	case LOAD_DIALOG:
@@ -255,14 +264,12 @@ public class IniOption {
 	String iniOp = gCon.getMameIniValue(iniFile, ms.getMameOption());
 	if (iniOp == null) {
 	    spin.setEnabled(false);
-	    ms.getLabel().setToolTipText(
-		    "This option is not available in this version of Mame");
 	} else {
 	    spin.setSelection((int) ((new Double(iniOp).doubleValue()) * 10));
 	    spin.setMaximum(maxValue * 10);
-	    ms.getLabel().setToolTipText(getToolTip(mameOption));
 	}
 
+	ms.getLabel().setToolTipText(getToolTip(mameOption));
 	spin.addSelectionListener(doubleSpinnerAdapter);
 	ms.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
     }
@@ -277,14 +284,12 @@ public class IniOption {
 	String iniOp = gCon.getMameIniValue(iniFile, ms.getMameOption());
 	if (iniOp == null) {
 	    spin.setEnabled(false);
-	    ms.getLabel().setToolTipText(
-		    "This option is not available in this version of Mame");
 	} else {
 	    spin.setSelection(new Integer(iniOp).intValue());
 	    spin.setMaximum(maxValue);
-	    ms.getLabel().setToolTipText(getToolTip(mameOption));
 	}
 
+	ms.getLabel().setToolTipText(getToolTip(mameOption));
 	spin.addSelectionListener(intSpinnerAdapter);
 	ms.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
     }
@@ -297,28 +302,24 @@ public class IniOption {
 	String iniOp = gCon.getMameIniValue(iniFile, mtc.getOption());
 	if (iniOp == null) {
 	    txt.setEnabled(false);
-	    mtc.getLabel().setToolTipText(
-		    "This option is not available in this version of Mame");
 	} else {
 	    txt.setText(iniOp.replace("$HOME", System.getProperty("user.home")));
-	    mtc.getLabel().setToolTipText(getToolTip(mameOption));
 	}
 
+	mtc.getLabel().setToolTipText(getToolTip(mameOption));
 	mtc.setLabelText(name);
 	mtc.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 	txt.addModifyListener(TxtModifyListener);
     }
 
     public String getToolTip(String option) {
-	ArrayList<String> output = FileIO.getProcessOutput(mExec.getPath()
-		+ " -su", false);
 	String op = "-" + option + " ";
-	for (String i : output) {
+	for (String i : mameUsage) {
 	    if (i.startsWith(op)) {
 		return i.replace(op, "").trim();
 	    }
 	}
-	return "";
+	return "This option is not available in this version of Mame";
     }
 
     private void writeIni() {

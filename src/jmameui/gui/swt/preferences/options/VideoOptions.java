@@ -1,6 +1,5 @@
 package jmameui.gui.swt.preferences.options;
 
-import jmameui.mame.FileIO;
 import jmameui.mame.GuiControls;
 import jmameui.mame.MameExecutable;
 
@@ -9,14 +8,10 @@ import org.eclipse.swt.widgets.Group;
 public class VideoOptions extends IniOption {
 	
 	public VideoOptions(Group owner, GuiControls g, MameExecutable me) {
-		setGroup(owner);
-		setmExec(me);
-		setgCon(g);
-		setIniFile(FileIO.readFile(me.getIniFile()));
-		initUI();
+	    super(owner, g, me);
 	}
 
-	private void initUI() {
+	public void initUI() {
 		createMameCombo("Video","video", new String[] { "opengl", "soft" });
 		createMameCombo("Num Screens","numscreens", new String[] { "1" });
 		createMameCombo("Scale Mode","scalemode", new String[] { "none", "async", "yv12",

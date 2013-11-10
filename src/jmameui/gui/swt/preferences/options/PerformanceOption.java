@@ -1,6 +1,5 @@
 package jmameui.gui.swt.preferences.options;
 
-import jmameui.mame.FileIO;
 import jmameui.mame.GuiControls;
 import jmameui.mame.MameExecutable;
 
@@ -8,15 +7,10 @@ import org.eclipse.swt.widgets.Group;
 
 public class PerformanceOption extends IniOption {
     public PerformanceOption(Group owner, GuiControls g, MameExecutable me) {
-	setGroup(owner);
-	setmExec(me);
-	setgCon(g);
-	setIniFile(FileIO.readFile(me.getIniFile()));
-	initUI();
+	super(owner, g, me);
     }
 
-    private void initUI() {
-
+    public void initUI() {
 	createCheckBox("Multi Threading", "multithreading");
 	createCheckBox("Sdl Video FPS", "sdlvideofps");
 	createIntSpinner("Number Processors", "numprocessors", Runtime

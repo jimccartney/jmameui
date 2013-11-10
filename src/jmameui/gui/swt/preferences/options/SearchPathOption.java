@@ -1,6 +1,5 @@
 package jmameui.gui.swt.preferences.options;
 
-import jmameui.mame.FileIO;
 import jmameui.mame.GuiControls;
 import jmameui.mame.MameExecutable;
 
@@ -8,14 +7,10 @@ import org.eclipse.swt.widgets.Group;
 
 public class SearchPathOption extends IniOption {
     public SearchPathOption(Group owner, GuiControls g, MameExecutable me) {
-	setGroup(owner);
-	setmExec(me);
-	setgCon(g);
-	setIniFile(FileIO.readFile(me.getIniFile()));
-	initUI();
+	super(owner, g, me);
     }
 
-    private void initUI() {
+    public void initUI() {
 	createMamePathComp("Rom Path", "rompath", DIRECTORY_DIALOG);
 	createMamePathComp("Hash Path", "hashpath", DIRECTORY_DIALOG);
 	createMamePathComp("Sample Path", "samplepath", DIRECTORY_DIALOG);

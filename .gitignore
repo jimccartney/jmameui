@@ -1,5 +1,5 @@
 *.class
-cpsrc
+commit
 
 # Package Files #
 *.jar

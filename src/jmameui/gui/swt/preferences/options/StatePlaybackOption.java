@@ -1,6 +1,5 @@
 package jmameui.gui.swt.preferences.options;
 
-import jmameui.mame.FileIO;
 import jmameui.mame.GuiControls;
 import jmameui.mame.MameExecutable;
 
@@ -9,14 +8,10 @@ import org.eclipse.swt.widgets.Group;
 public class StatePlaybackOption extends IniOption {
 
     public StatePlaybackOption(Group owner, GuiControls g, MameExecutable me) {
-	setGroup(owner);
-	setmExec(me);
-	setgCon(g);
-	setIniFile(FileIO.readFile(me.getIniFile()));
-	initUI();
+	super(owner, g, me);
     }
 
-    private void initUI() {
+    public void initUI() {
 	
 	createCheckBox("Auto Save", "autosave");
 	createCheckBox("Burn In", "burnin");
