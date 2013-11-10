@@ -81,7 +81,7 @@ public class GuiControls {
 	MameRom m = getRom(romName);
 	MameExecutable me = getMameExecutable(m.getMamePath());
 	String cmd = me.getPath() + " " + m.getName() + " -inipath "
-		+ me.getIniPath() + " -autosave";
+		+ me.getIniPath();
 
 	ArrayList<String> tmp = FileIO.getProcessOutput(cmd, true);
 	if (tmp != null) {

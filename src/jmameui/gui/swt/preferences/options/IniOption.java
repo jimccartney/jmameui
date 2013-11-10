@@ -141,13 +141,18 @@ public class IniOption {
 	}
     };
 
-    private ModifyListener mameTxtModifyListener = new ModifyListener() {
+    private ModifyListener TxtModifyListener = new ModifyListener() {
 	public void modifyText(ModifyEvent e) {
 	    Text txt = (Text) e.widget;
-	    MameTextComp mtc = (MameTextComp) txt.getParent();
-
-	    gCon.changeMameIniValue(iniFile, mtc.getOption(), txt.getText());
-	    writeIni();
+	    if (txt.getParent() instanceof MameTextComp) {
+		MameTextComp par = (MameTextComp) txt.getParent();
+		gCon.changeMameIniValue(iniFile, par.getOption(), txt.getText());
+		    writeIni();
+	    } else if (txt.getParent() instanceof MamePathComp) {
+		MamePathComp par = (MamePathComp) txt.getParent();
+		gCon.changeMameIniValue(iniFile, par.getOption(), txt.getText());
+		    writeIni();
+	    }
 	}
     };
 
@@ -220,7 +225,7 @@ public class IniOption {
 
 	mpc.setLabelText(name);
 	mpc.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
-
+	txt.addModifyListener(TxtModifyListener);
 	switch (option) {
 	case LOAD_DIALOG:
 	    mpc.getButton().addSelectionListener(mameLoadPathListener);
@@ -285,7 +290,7 @@ public class IniOption {
 
 	mtc.setLabelText(name);
 	mtc.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-	txt.addModifyListener(mameTxtModifyListener);
+	txt.addModifyListener(TxtModifyListener);
     }
 
     public void createLabel(String name) {

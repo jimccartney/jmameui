@@ -22,7 +22,5 @@ public class PerformanceOption extends IniOption {
 	createIntSpinner("Number Processors", "numprocessors", Runtime
 		.getRuntime().availableProcessors());
 	createIntSpinner("Bench", "bench", 10000);
-	
-	createTextBox("Snap Name", "snapname");
     }
 }
