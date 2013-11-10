@@ -22,11 +22,14 @@ import java.util.ArrayList;
 import jmameui.gui.swt.preferences.widgets.MameCombo;
 import jmameui.gui.swt.preferences.widgets.MamePathComp;
 import jmameui.gui.swt.preferences.widgets.MameSpinner;
+import jmameui.gui.swt.preferences.widgets.MameTextComp;
 import jmameui.mame.FileIO;
 import jmameui.mame.GuiControls;
 import jmameui.mame.MameExecutable;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.ModifyEvent;
+import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -138,6 +141,16 @@ public class IniOption {
 	}
     };
 
+    private ModifyListener mameTxtModifyListener = new ModifyListener() {
+	public void modifyText(ModifyEvent e) {
+	    Text txt = (Text) e.widget;
+	    MameTextComp mtc = (MameTextComp) txt.getParent();
+
+	    gCon.changeMameIniValue(iniFile, mtc.getOption(), txt.getText());
+	    writeIni();
+	}
+    };
+
     private SelectionAdapter doubleSpinnerAdapter = new SelectionAdapter() {
 	public void widgetSelected(SelectionEvent e) {
 	    Spinner spin = (Spinner) e.widget;
@@ -194,7 +207,7 @@ public class IniOption {
     }
 
     public void createMamePathComp(String name, String MameOption, int option) {
-	MamePathComp mpc = new MamePathComp(group, SWT.BORDER);
+	MamePathComp mpc = new MamePathComp(group, SWT.NONE);
 	Text txt = mpc.getText();
 
 	mpc.setOption(MameOption);
@@ -207,7 +220,7 @@ public class IniOption {
 
 	mpc.setLabelText(name);
 	mpc.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
-	
+
 	switch (option) {
 	case LOAD_DIALOG:
 	    mpc.getButton().addSelectionListener(mameLoadPathListener);
@@ -221,7 +234,7 @@ public class IniOption {
     }
 
     public void CreateDoubleSpinner(String name, String mameOption, int maxValue) {
-	MameSpinner ms = new MameSpinner(group, SWT.BORDER,
+	MameSpinner ms = new MameSpinner(group, SWT.NONE,
 		MameSpinner.DOUBLE_SPINNER);
 	Spinner spin = ms.getSpin();
 	ms.setLabelText(name);
@@ -239,8 +252,8 @@ public class IniOption {
 	ms.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
     }
 
-    public void CreateIntSpinner(String name, String mameOption, int maxValue) {
-	MameSpinner ms = new MameSpinner(group, SWT.BORDER,
+    public void createIntSpinner(String name, String mameOption, int maxValue) {
+	MameSpinner ms = new MameSpinner(group, SWT.NONE,
 		MameSpinner.INT_SPINNER);
 	Spinner spin = ms.getSpin();
 	ms.setLabelText(name);
@@ -256,6 +269,23 @@ public class IniOption {
 
 	spin.addSelectionListener(intSpinnerAdapter);
 	ms.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+    }
+
+    public void createTextBox(String name, String mameOption) {
+	MameTextComp mtc = new MameTextComp(group, SWT.NONE);
+	Text txt = mtc.getText();
+
+	mtc.setOption(mameOption);
+	String iniOp = gCon.getMameIniValue(iniFile, mtc.getOption());
+	if (iniOp.equals("")) {
+	    txt.setEnabled(false);
+	} else {
+	    txt.setText(iniOp.replace("$HOME", System.getProperty("user.home")));
+	}
+
+	mtc.setLabelText(name);
+	mtc.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+	txt.addModifyListener(mameTxtModifyListener);
     }
 
     public void createLabel(String name) {
