@@ -147,11 +147,11 @@ public class IniOption {
 	    if (txt.getParent() instanceof MameTextComp) {
 		MameTextComp par = (MameTextComp) txt.getParent();
 		gCon.changeMameIniValue(iniFile, par.getOption(), txt.getText());
-		    writeIni();
+		writeIni();
 	    } else if (txt.getParent() instanceof MamePathComp) {
 		MamePathComp par = (MamePathComp) txt.getParent();
 		gCon.changeMameIniValue(iniFile, par.getOption(), txt.getText());
-		    writeIni();
+		writeIni();
 	    }
 	}
     };
@@ -182,12 +182,13 @@ public class IniOption {
 	combo.setItems(items);
 	String iniOp = gCon.getMameIniValue(iniFile, mameOption);
 
-	if (iniOp.equals("")) {
+	if (iniOp == null) {
 	    combo.setEnabled(false);
 	    mc.getLabel().setToolTipText(
 		    "This option is not available in this version of Mame");
 	} else {
 	    combo.select(combo.indexOf(iniOp));
+	    mc.getLabel().setToolTipText(getToolTip(mameOption));
 
 	}
 	combo.addSelectionListener(mameComboAdapter);
@@ -200,10 +201,12 @@ public class IniOption {
 	Button btn = new Button(group, SWT.CHECK);
 	btn.setText(name);
 	String iniOp = gCon.getMameIniValue(iniFile, mameOption);
-	if (iniOp.equals("1")) {
-	    btn.setSelection(true);
-	} else if (iniOp.equals("")) {
+	btn.setToolTipText(getToolTip(mameOption));
+	if (iniOp == null) {
 	    btn.setEnabled(false);
+	    btn.setToolTipText("This option is not available in this version of Mame");
+	} else if (iniOp.equals("1")) {
+	    btn.setSelection(true);
 	} else {
 	    btn.setSelection(false);
 	}
@@ -211,16 +214,20 @@ public class IniOption {
 	btn.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 2, 1));
     }
 
-    public void createMamePathComp(String name, String MameOption, int option) {
+    public void createMamePathComp(String name, String mameOption, int option) {
 	MamePathComp mpc = new MamePathComp(group, SWT.NONE);
 	Text txt = mpc.getText();
 
-	mpc.setOption(MameOption);
+	mpc.setOption(mameOption);
 	String iniOp = gCon.getMameIniValue(iniFile, mpc.getOption());
-	if (iniOp.equals("")) {
+	if (iniOp == null) {
 	    txt.setEnabled(false);
+	    mpc.getButton().setEnabled(false);
+	    mpc.getLabel().setToolTipText(
+		    "This option is not available in this version of Mame");
 	} else {
 	    txt.setText(iniOp.replace("$HOME", System.getProperty("user.home")));
+	    mpc.getLabel().setToolTipText(getToolTip(mameOption));
 	}
 
 	mpc.setLabelText(name);
@@ -246,11 +253,14 @@ public class IniOption {
 
 	ms.setMameOption(mameOption);
 	String iniOp = gCon.getMameIniValue(iniFile, ms.getMameOption());
-	if (iniOp.equals("")) {
+	if (iniOp == null) {
 	    spin.setEnabled(false);
+	    ms.getLabel().setToolTipText(
+		    "This option is not available in this version of Mame");
 	} else {
 	    spin.setSelection((int) ((new Double(iniOp).doubleValue()) * 10));
 	    spin.setMaximum(maxValue * 10);
+	    ms.getLabel().setToolTipText(getToolTip(mameOption));
 	}
 
 	spin.addSelectionListener(doubleSpinnerAdapter);
@@ -265,11 +275,14 @@ public class IniOption {
 
 	ms.setMameOption(mameOption);
 	String iniOp = gCon.getMameIniValue(iniFile, ms.getMameOption());
-	if (iniOp.equals("")) {
+	if (iniOp == null) {
 	    spin.setEnabled(false);
+	    ms.getLabel().setToolTipText(
+		    "This option is not available in this version of Mame");
 	} else {
 	    spin.setSelection(new Integer(iniOp).intValue());
 	    spin.setMaximum(maxValue);
+	    ms.getLabel().setToolTipText(getToolTip(mameOption));
 	}
 
 	spin.addSelectionListener(intSpinnerAdapter);
@@ -282,10 +295,13 @@ public class IniOption {
 
 	mtc.setOption(mameOption);
 	String iniOp = gCon.getMameIniValue(iniFile, mtc.getOption());
-	if (iniOp.equals("")) {
+	if (iniOp == null) {
 	    txt.setEnabled(false);
+	    mtc.getLabel().setToolTipText(
+		    "This option is not available in this version of Mame");
 	} else {
 	    txt.setText(iniOp.replace("$HOME", System.getProperty("user.home")));
+	    mtc.getLabel().setToolTipText(getToolTip(mameOption));
 	}
 
 	mtc.setLabelText(name);
@@ -293,10 +309,16 @@ public class IniOption {
 	txt.addModifyListener(TxtModifyListener);
     }
 
-    public void createLabel(String name) {
-	Label tmp = new Label(group, SWT.NONE);
-	tmp.setText(name);
-	tmp.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1));
+    public String getToolTip(String option) {
+	ArrayList<String> output = FileIO.getProcessOutput(mExec.getPath()
+		+ " -su", false);
+	String op = "-" + option + " ";
+	for (String i : output) {
+	    if (i.startsWith(op)) {
+		return i.replace(op, "").trim();
+	    }
+	}
+	return "";
     }
 
     private void writeIni() {

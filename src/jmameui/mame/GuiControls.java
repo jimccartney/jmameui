@@ -465,8 +465,10 @@ public class GuiControls {
     }
 
     public String getMameIniValue(ArrayList<String> ini, String key) {
+	boolean b = false;
 	for (String i : ini) {
 	    if (i.startsWith(key + " ")) {
+		b = true;
 		String[] items = i.split(" ");
 		for (String j : items) {
 		    if (!j.equals("") && !j.equals(key))
@@ -474,7 +476,10 @@ public class GuiControls {
 		}
 	    }
 	}
-	return "";
+	if (b) {
+	    return "";
+	}
+	return null;
     }
 
     public void changeMameIniValue(ArrayList<String> ini, String key,
