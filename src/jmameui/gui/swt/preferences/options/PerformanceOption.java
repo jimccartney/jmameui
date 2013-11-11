@@ -10,6 +10,9 @@ public class PerformanceOption extends IniOption {
 	super(owner, g, me);
     }
 
+    public PerformanceOption() {
+    }
+
     public void initUI() {
 	createCheckBox("Multi Threading", "multithreading");
 	createCheckBox("Sdl Video FPS", "sdlvideofps");

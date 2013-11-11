@@ -10,6 +10,9 @@ public class OutputDirOption extends IniOption {
 	super(owner, g, me);
     }
 
+    public OutputDirOption() {
+    }
+
     public void initUI() {
 	createMamePathComp("Cfg Directory", "cfg_directory", DIRECTORY_DIALOG);
 	createMamePathComp("Nvram Directory", "nvram_directory",

@@ -10,6 +10,9 @@ public class SearchPathOption extends IniOption {
 	super(owner, g, me);
     }
 
+    public SearchPathOption() {
+    }
+
     public void initUI() {
 	createMamePathComp("Rom Path", "rompath", DIRECTORY_DIALOG);
 	createMamePathComp("Hash Path", "hashpath", DIRECTORY_DIALOG);

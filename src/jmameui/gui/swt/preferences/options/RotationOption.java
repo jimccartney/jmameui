@@ -11,6 +11,9 @@ public class RotationOption extends IniOption {
 	super(owner, g, me);
     }
 
+    public RotationOption() {
+    }
+
     public void initUI() {
 	createCheckBox("Rotate", "rotate");
 	createCheckBox("Rotate Clockwise", "ror");

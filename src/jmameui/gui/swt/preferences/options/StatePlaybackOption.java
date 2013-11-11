@@ -11,6 +11,9 @@ public class StatePlaybackOption extends IniOption {
 	super(owner, g, me);
     }
 
+    public StatePlaybackOption() {
+    }
+
     public void initUI() {
 	
 	createCheckBox("Auto Save", "autosave");

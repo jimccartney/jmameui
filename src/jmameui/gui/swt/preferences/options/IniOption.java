@@ -52,11 +52,13 @@ public class IniOption {
     public static final int DIRECTORY_DIALOG = 1;
     public static final int SAVE_DIALOG = 2;
 
+    public IniOption() {
+    }
+
     public IniOption(Group owner, GuiControls g, MameExecutable me) {
 	group = owner;
 	mExec = me;
 	gCon = g;
-
 	iniFile = FileIO.readFile(me.getIniFile());
 	mameUsage = FileIO.getProcessOutput(me.getPath() + " -su", false);
 	initUI();
@@ -201,7 +203,7 @@ public class IniOption {
 	    combo.select(combo.indexOf(iniOp));
 
 	}
-	
+
 	mc.getLabel().setToolTipText(getToolTip(mameOption));
 	combo.addSelectionListener(mameComboAdapter);
 	mc.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 2, 1));
@@ -284,11 +286,13 @@ public class IniOption {
 	String iniOp = gCon.getMameIniValue(iniFile, ms.getMameOption());
 	if (iniOp == null) {
 	    spin.setEnabled(false);
+	} else if (iniOp.equals("auto")) {
+	    spin.setSelection(0);
 	} else {
 	    spin.setSelection(new Integer(iniOp).intValue());
-	    spin.setMaximum(maxValue);
 	}
-
+	
+	spin.setMaximum(maxValue);
 	ms.getLabel().setToolTipText(getToolTip(mameOption));
 	spin.addSelectionListener(intSpinnerAdapter);
 	ms.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));

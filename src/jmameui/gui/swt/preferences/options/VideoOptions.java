@@ -11,6 +11,9 @@ public class VideoOptions extends IniOption {
 	    super(owner, g, me);
 	}
 
+	public VideoOptions() {
+	}
+
 	public void initUI() {
 		createMameCombo("Video","video", new String[] { "opengl", "soft" });
 		createMameCombo("Num Screens","numscreens", new String[] { "1" });

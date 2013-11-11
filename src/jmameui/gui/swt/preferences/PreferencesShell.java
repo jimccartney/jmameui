@@ -16,6 +16,13 @@
  */
 package jmameui.gui.swt.preferences;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
+import java.util.HashMap;
+
+import jmameui.gui.swt.preferences.options.CorePerformanceOption;
+import jmameui.gui.swt.preferences.options.IniOption;
 import jmameui.gui.swt.preferences.options.JMameMSetTab;
 import jmameui.gui.swt.preferences.options.OutputDirOption;
 import jmameui.gui.swt.preferences.options.PerformanceOption;
@@ -23,6 +30,7 @@ import jmameui.gui.swt.preferences.options.RotationOption;
 import jmameui.gui.swt.preferences.options.SearchPathOption;
 import jmameui.gui.swt.preferences.options.StatePlaybackOption;
 import jmameui.gui.swt.preferences.options.VideoOptions;
+import jmameui.mame.FileIO;
 import jmameui.mame.GuiControls;
 import jmameui.mame.MameExecutable;
 
@@ -58,6 +66,7 @@ public class PreferencesShell {
     private List mamePrefList;
     private MameExecutable currExec = null;
     private GuiControls Gcon;
+    private HashMap<String, IniOption> options = new HashMap<String, IniOption>();
 
     private SelectionAdapter closeBtnListener = new SelectionAdapter() {
 	public void widgetSelected(SelectionEvent arg0) {
@@ -70,33 +79,42 @@ public class PreferencesShell {
 	    for (MameExecutable i : Gcon.getMameExecutables()) {
 		if (i.getVersion().equals(mameCombo.getText())) {
 		    currExec = i;
-		    mamePrefListAdapter.widgetSelected(arg0);
+		    mamePrefList.notifyListeners(SWT.Selection, new Event());
 		}
 	    }
 	}
     };
     private SelectionAdapter mamePrefListAdapter = new SelectionAdapter() {
 	public void widgetSelected(SelectionEvent arg0) {
-	    if (currExec == null || group == null) {
+	    if (currExec == null) {
 		return;
 	    }
+	    
 	    for (Control i : group.getChildren()) {
 		i.dispose();
 	    }
-	    String text = mamePrefList
-		    .getItem(mamePrefList.getSelectionIndex());
-	    if (text.equals("Output Directory")) {
-		new OutputDirOption(group, Gcon, currExec);
-	    } else if (text.equals("Video")) {
-		new VideoOptions(group, Gcon, currExec);
-	    } else if (text.equals("Performance")) {
-		new PerformanceOption(group, Gcon, currExec);
-	    } else if (text.equals("Search Paths")) {
-		new SearchPathOption(group, Gcon, currExec);
-	    } else if (text.equals("State/Playback")) {
-		new StatePlaybackOption(group, Gcon, currExec);
-	    } else if (text.equals("Rotation")) {
-		new RotationOption(group, Gcon, currExec);
+	    
+	    try {
+		Class<?> cls = Class.forName(options
+			.get(mamePrefList.getItem(mamePrefList
+				.getSelectionIndex())).getClass().getName());
+		Constructor<?> cons = cls.getConstructor(Group.class,
+			GuiControls.class, MameExecutable.class);
+		cons.newInstance(group, Gcon, currExec);
+	    } catch (ClassNotFoundException e) {
+		FileIO.writeToLogFile(e);
+	    } catch (NoSuchMethodException e) {
+		FileIO.writeToLogFile(e);
+	    } catch (SecurityException e) {
+		FileIO.writeToLogFile(e);
+	    } catch (InstantiationException e) {
+		FileIO.writeToLogFile(e);
+	    } catch (IllegalAccessException e) {
+		FileIO.writeToLogFile(e);
+	    } catch (IllegalArgumentException e) {
+		FileIO.writeToLogFile(e);
+	    } catch (InvocationTargetException e) {
+		FileIO.writeToLogFile(e);
 	    }
 
 	    group.layout();
@@ -113,6 +131,23 @@ public class PreferencesShell {
 	shell.setSize(640, 480);
 	shell.open();
 
+	popOptions();
+    }
+
+    public void popOptions() {
+	options.put("Core Performance", new CorePerformanceOption());
+	options.put("Output Directory", new OutputDirOption());
+	options.put("Performance", new PerformanceOption());
+	options.put("Rotation", new RotationOption());
+	options.put("Search Paths", new SearchPathOption());
+	options.put("State/Playback", new StatePlaybackOption());
+	options.put("Video", new VideoOptions());
+
+	String[] keys = options.keySet().toArray(new String[0]);
+	Arrays.sort(keys);
+	mamePrefList.setItems(keys);
+	mamePrefList.setSelection(0);
+	mameCombo.notifyListeners(SWT.Selection, new Event());
     }
 
     private void initUI() {
@@ -142,7 +177,6 @@ public class PreferencesShell {
 	mameCombo.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false,
 		false, 1, 1));
 	mameCombo.select(0);
-	mameCombo.notifyListeners(SWT.Selection, new Event());
 
 	group = new Group(mameTabsComp, SWT.SHADOW_ETCHED_IN | SWT.H_SCROLL);
 	group.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 2));
@@ -152,9 +186,6 @@ public class PreferencesShell {
 	mamePrefList.addSelectionListener(mamePrefListAdapter);
 	mamePrefList.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false,
 		false, 1, 1));
-	mamePrefList.setItems(new String[] { "Output Directory", "Performance",
-		"Rotation", "Search Paths", "State/Playback", "Video" });
-	mamePrefList.setSelection(0);
 
 	jMameMTab = new TabItem(jMameTabs, SWT.NONE);
 	jMameMTab.setText("Mame");
