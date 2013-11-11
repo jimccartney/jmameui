@@ -16,8 +16,8 @@ public class PerformanceOption extends IniOption {
     public void initUI() {
 	createCheckBox("Multi Threading", "multithreading");
 	createCheckBox("Sdl Video FPS", "sdlvideofps");
-	createIntSpinner("Number Processors", "numprocessors", Runtime
+	createIntSpinner("Number Processors", "numprocessors", 0,Runtime
 		.getRuntime().availableProcessors());
-	createIntSpinner("Bench", "bench", 10000);
+	createIntSpinner("Bench", "bench",0, 10000);
     }
 }

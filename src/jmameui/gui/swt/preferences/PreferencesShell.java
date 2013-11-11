@@ -21,9 +21,11 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.HashMap;
 
+import jmameui.gui.swt.preferences.options.ArtworkOption;
 import jmameui.gui.swt.preferences.options.CorePerformanceOption;
 import jmameui.gui.swt.preferences.options.DebuggingOption;
 import jmameui.gui.swt.preferences.options.IniOption;
+import jmameui.gui.swt.preferences.options.InputAutomatic;
 import jmameui.gui.swt.preferences.options.InputOptions;
 import jmameui.gui.swt.preferences.options.JMameMSetTab;
 import jmameui.gui.swt.preferences.options.OutputDirOption;
@@ -32,6 +34,7 @@ import jmameui.gui.swt.preferences.options.RotationOption;
 import jmameui.gui.swt.preferences.options.SDLOption;
 import jmameui.gui.swt.preferences.options.ScreenOption;
 import jmameui.gui.swt.preferences.options.SearchPathOption;
+import jmameui.gui.swt.preferences.options.SoundOption;
 import jmameui.gui.swt.preferences.options.StatePlaybackOption;
 import jmameui.gui.swt.preferences.options.VectorOption;
 import jmameui.gui.swt.preferences.options.VideoOptions;
@@ -149,9 +152,12 @@ public class PreferencesShell {
 	options.put("Video", new VideoOptions());
 	options.put("Screen", new ScreenOption());
 	options.put("Debugging", new DebuggingOption());
-	options.put("Sdl Lowlevel Driver", new SDLOption());
+	options.put("SDL Lowlevel Driver", new SDLOption());
 	options.put("Vector", new VectorOption());
 	options.put("Input", new InputOptions());
+	options.put("Input Automatic", new InputAutomatic());
+	options.put("Artwork", new ArtworkOption());
+	options.put("Sound", new SoundOption());
 
 	String[] keys = options.keySet().toArray(new String[0]);
 	Arrays.sort(keys);

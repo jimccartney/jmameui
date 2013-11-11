@@ -158,7 +158,7 @@ public class GuiControls {
 	for (MameExecutable i : mameExecutables) {
 	    badRoms.add("### Mame Executable = " + i.getPath());
 	    ArrayList<String> lines = FileIO.getProcessOutput(i.getPath()
-		    + " -verifyroms -rp " + romPath, false);
+		    + " -verifyroms -inipath " + i.getIniPath(), false);
 	    for (String line : lines) {
 		if (line.contains("good") && tmp.add(line)) {
 		    goodRoms.add(line + "," + i.getPath());

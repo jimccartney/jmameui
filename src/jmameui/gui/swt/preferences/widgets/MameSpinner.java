@@ -31,10 +31,8 @@ public class MameSpinner extends Composite {
 	
 	if (option == DOUBLE_SPINNER) {
 	    spin.setDigits(1);
-	    spin.setMinimum(0);
 	    spin.setIncrement(1);
 	} else if (option == INT_SPINNER) {
-	    spin.setMinimum(0);
 	    spin.setIncrement(1);
 	}
     }

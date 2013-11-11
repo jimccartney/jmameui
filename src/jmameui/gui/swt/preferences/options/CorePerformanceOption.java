@@ -21,8 +21,8 @@ public class CorePerformanceOption extends IniOption {
 	createCheckBox("Sleep", "sleep");
 	createCheckBox("Refresh Speed", "refreshspeed");
 	
-	createIntSpinner("Frame Skip", "frameskip", 10);
-	createIntSpinner("Seconds To Run", "seconds_to_run", 60000);
+	createIntSpinner("Frame Skip", "frameskip",0, 10);
+	createIntSpinner("Seconds To Run", "seconds_to_run",0, 60000);
 	
 	CreateDoubleSpinner("Speed", "speed",20);
     }

@@ -21,8 +21,11 @@ public class DebuggingOption extends IniOption {
 	createCheckBox("Update In Pause", "update_in_pause");
 	createCheckBox("Debug", "debug");
 	createCheckBox("Debug Internal", "debug_internal");
-    
+	createCheckBox("Os Log", "oslog");
+	
 	createMamePathComp("Debug Script", "debugscript", LOAD_DIALOG);
+	
+	createIntSpinner("Watchdog", "watchdog",0, 60000);
     }
 
 }

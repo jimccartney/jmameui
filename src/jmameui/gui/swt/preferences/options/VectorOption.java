@@ -20,6 +20,6 @@ public class VectorOption extends IniOption {
 	
 	CreateDoubleSpinner("Beam", "beam", 1);
 	
-	createIntSpinner("Flicker", "flicker", 10);
+	createIntSpinner("Flicker", "flicker",0, 10);
     }
 }

@@ -276,12 +276,11 @@ public class IniOption {
 	ms.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
     }
 
-    public void createIntSpinner(String name, String mameOption, int maxValue) {
+    public void createIntSpinner(String name, String mameOption,int minValue, int maxValue) {
 	MameSpinner ms = new MameSpinner(group, SWT.NONE,
 		MameSpinner.INT_SPINNER);
 	Spinner spin = ms.getSpin();
 	ms.setLabelText(name);
-
 	ms.setMameOption(mameOption);
 	String iniOp = gCon.getMameIniValue(iniFile, ms.getMameOption());
 	if (iniOp == null) {
@@ -291,12 +290,14 @@ public class IniOption {
 	} else {
 	    spin.setSelection(new Integer(iniOp).intValue());
 	}
-	
+
+	spin.setMinimum(minValue);
 	spin.setMaximum(maxValue);
 	ms.getLabel().setToolTipText(getToolTip(mameOption));
 	spin.addSelectionListener(intSpinnerAdapter);
 	ms.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
     }
+
 
     public void createTextBox(String name, String mameOption) {
 	MameTextComp mtc = new MameTextComp(group, SWT.NONE);
