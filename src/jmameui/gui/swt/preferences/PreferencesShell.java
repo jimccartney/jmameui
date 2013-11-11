@@ -24,13 +24,16 @@ import java.util.HashMap;
 import jmameui.gui.swt.preferences.options.ArtworkOption;
 import jmameui.gui.swt.preferences.options.CorePerformanceOption;
 import jmameui.gui.swt.preferences.options.DebuggingOption;
+import jmameui.gui.swt.preferences.options.FullScreenOption;
 import jmameui.gui.swt.preferences.options.IniOption;
 import jmameui.gui.swt.preferences.options.InputAutomatic;
 import jmameui.gui.swt.preferences.options.InputOptions;
 import jmameui.gui.swt.preferences.options.JMameMSetTab;
+import jmameui.gui.swt.preferences.options.MiscOption;
 import jmameui.gui.swt.preferences.options.OutputDirOption;
 import jmameui.gui.swt.preferences.options.PerformanceOption;
 import jmameui.gui.swt.preferences.options.RotationOption;
+import jmameui.gui.swt.preferences.options.SDLKeyboardOption;
 import jmameui.gui.swt.preferences.options.SDLOption;
 import jmameui.gui.swt.preferences.options.ScreenOption;
 import jmameui.gui.swt.preferences.options.SearchPathOption;
@@ -158,6 +161,9 @@ public class PreferencesShell {
 	options.put("Input Automatic", new InputAutomatic());
 	options.put("Artwork", new ArtworkOption());
 	options.put("Sound", new SoundOption());
+	options.put("Misc", new MiscOption());
+	options.put("Full Screen", new FullScreenOption());
+	options.put("SDL Keyboard", new SDLKeyboardOption());
 
 	String[] keys = options.keySet().toArray(new String[0]);
 	Arrays.sort(keys);
