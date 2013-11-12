@@ -30,7 +30,9 @@ import jmameui.gui.swt.preferences.options.InputAutomatic;
 import jmameui.gui.swt.preferences.options.InputOptions;
 import jmameui.gui.swt.preferences.options.JMameMSetTab;
 import jmameui.gui.swt.preferences.options.MiscOption;
+import jmameui.gui.swt.preferences.options.OpenGLOption;
 import jmameui.gui.swt.preferences.options.OutputDirOption;
+import jmameui.gui.swt.preferences.options.PerWindowVideoOption;
 import jmameui.gui.swt.preferences.options.PerformanceOption;
 import jmameui.gui.swt.preferences.options.RotationOption;
 import jmameui.gui.swt.preferences.options.SDLKeyboardOption;
@@ -100,11 +102,11 @@ public class PreferencesShell {
 	    if (currExec == null) {
 		return;
 	    }
-	    
+
 	    for (Control i : group.getChildren()) {
 		i.dispose();
 	    }
-	    
+
 	    try {
 		Class<?> cls = Class.forName(options
 			.get(mamePrefList.getItem(mamePrefList
@@ -155,7 +157,7 @@ public class PreferencesShell {
 	options.put("Video", new VideoOptions());
 	options.put("Screen", new ScreenOption());
 	options.put("Debugging", new DebuggingOption());
-	options.put("SDL Lowlevel Driver", new SDLOption());
+	options.put("SDL Lowlevel", new SDLOption());
 	options.put("Vector", new VectorOption());
 	options.put("Input", new InputOptions());
 	options.put("Input Automatic", new InputAutomatic());
@@ -164,7 +166,10 @@ public class PreferencesShell {
 	options.put("Misc", new MiscOption());
 	options.put("Full Screen", new FullScreenOption());
 	options.put("SDL Keyboard", new SDLKeyboardOption());
-
+	options.put("SDL Joystick", new SDLKeyboardOption());
+	options.put("Per-Window Video", new PerWindowVideoOption());
+	options.put("OpenGL", new OpenGLOption());
+	
 	String[] keys = options.keySet().toArray(new String[0]);
 	Arrays.sort(keys);
 	mamePrefList.setItems(keys);

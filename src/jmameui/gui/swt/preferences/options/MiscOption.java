@@ -17,7 +17,7 @@ public class MiscOption extends IniOption {
     @Override
     public void initUI() {
 	createCheckBox("Drc", "drc");
-	createCheckBox("Drc_use_c", "drc_use_c");
+	createCheckBox("Drc Use C", "drc_use_c");
 	createCheckBox("Cheat", "cheat");
 	createCheckBox("Skip Gameinfo", "skip_gameinfo");
 	createCheckBox("Confirm Quit", "confirm_quit");
@@ -32,7 +32,7 @@ public class MiscOption extends IniOption {
 	createMamePathComp("Autoboot Script", "autoboot_script", LOAD_DIALOG);
 	
 	createTextBox("Http", "http");
-	createTextBox("http Port", "http_port");
+	createTextBox("Http Port", "http_port");
 	createTextBox("Http Path", "http_path");
     }
 
