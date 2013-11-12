@@ -460,7 +460,7 @@ public class GuiControls {
 	} else {
 	    romPath = FileIO.getMameIniValue(me, "rompath");
 	}
-
+	
 	mameExecutables.add(me);
     }
 

@@ -537,7 +537,7 @@ public class FileIO {
 		os.close();
 	}
     }
-
+         
     public static void setLogDir(File file) {
 	logDir = file;
     }

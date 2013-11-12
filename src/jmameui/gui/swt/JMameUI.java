@@ -18,7 +18,6 @@ package jmameui.gui.swt;
 
 import java.util.ArrayList;
 
-import jmameui.gui.swt.MameDialog.MameDialogOption;
 import jmameui.mame.MameRom;
 
 import org.eclipse.swt.SWT;
@@ -52,11 +51,17 @@ public class JMameUI extends SWTJMameUI {
 	shell.open();
 
 	Boolean MameFound = gCon.start();
-	if (MameFound == null) {
 
-	} else if (MameFound) {
+	if (MameFound != null && MameFound) {
+	    String ver = gCon.getSystemMame().getVersion().split(" ")[0];
+	    String preVer = gCon.readSettingsFile("system_mame_version");
+	    if (!ver.equals(preVer)) {
+		new MameDialog(	shell,
+			"System Mame version changed\nPlease rebuild the database.",
+			MameDialog.WARNING);
+	    }
 	    buildDB(false);
-	} else {
+	} else if (MameFound != null) {
 	    new MameNotFound(this);
 	}
 
@@ -175,7 +180,7 @@ public class JMameUI extends SWTJMameUI {
 
     public void viewBadRomsets() {
 	new MameDialog(shell, gCon.getUnavailableRomText(),
-		MameDialogOption.TEXTAREA);
+		MameDialog.TEXTAREA);
 
     }
 }

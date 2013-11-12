@@ -22,67 +22,99 @@ import java.util.Collection;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Dialog;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 public class MameDialog {
 
-	enum MameDialogOption {
-		WARNING, ERRORVIEWLOG, INFORMATION, TEXTAREA
-	}
+    public static final int WARNING = 0;
+    public static final int INFORMATION = 1;
+    public static final int TEXTAREA = 2;
 
-	private Dialog dialog;
-	private Shell shell;
-	private ArrayList<String> data;
-	public MameDialog(Shell owner ,Collection<? extends String> text, MameDialogOption option) {
-		shell = owner;
-		data = new ArrayList<String>(text);
-		switch (option) {
-		case WARNING:
-			break;
-		case ERRORVIEWLOG:
-			break;
-		case INFORMATION:
-			break;
-		case TEXTAREA:
-			initTEXTAREA();
-			break;
-		}
-	}
-	
-	
-	private void initInformation(){
-		
-	}
+    private Shell dialogShell;
+    private Image icon;
+    private ArrayList<String> data = new ArrayList<String>();
+    private SelectionAdapter closeAdapter = new SelectionAdapter() {
+	    public void widgetSelected(SelectionEvent arg0) {
+		dialogShell.dispose();
+	    }
+	};
 
-	private void initTEXTAREA() {
-		final Shell dialogShell = new Shell(shell,SWT.RESIZE);
-		dialogShell.setText("JMameUI - View unavailable romsets");
-		dialogShell.setLayout(new GridLayout(1, false));
-		Text text = new Text(dialogShell, SWT.BORDER | SWT.WRAP |SWT.V_SCROLL | SWT.H_SCROLL);
-		text.setEditable(false);
-		StringBuilder sb = new StringBuilder();
-		for(String i: data){
-			sb.append(i+"\n");
-		}
-		text.append(sb.toString());
-		GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
-		gridData.heightHint = 5 * text.getLineHeight();
-		text.setLayoutData(gridData);
-		Button closeBtn = new Button(dialogShell, SWT.PUSH);
-		closeBtn.setText("Close");
-		closeBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
-		closeBtn.addSelectionListener(new SelectionAdapter() {
-			public void widgetSelected(SelectionEvent arg0) {
-				dialogShell.dispose();
-			}
-		});
-		dialogShell.pack();
-		dialogShell.open();
+    public MameDialog(Shell owner, Collection<? extends String> text, int option) {
+	dialogShell = new Shell(owner, SWT.RESIZE);
+	data = new ArrayList<String>(text);
+	start(option);
+    }
+
+    public MameDialog(Shell owner, String text, int option) {
+	dialogShell = new Shell(owner, SWT.RESIZE);
+	data.add(text);
+	start(option);
+    }
+
+    private void start(int option) {
+	switch (option) {
+	case TEXTAREA:
+	    initTEXTAREA();
+	    break;
+	case WARNING:
+	    icon = Display.getDefault().getSystemImage(SWT.ICON_WARNING);
+	    InitInformation();
+	    break;
+	case INFORMATION:
+	    icon = Display.getDefault().getSystemImage(SWT.ICON_INFORMATION);
+	    InitInformation();
 	}
+	dialogShell.pack();
+	dialogShell.open();
+    }
+
+    private void InitInformation() {
+	dialogShell.setLayout(new GridLayout(2, false));
+	dialogShell.setText("JMameUI");
+
+	Label iconLab = new Label(dialogShell, SWT.NONE);
+	iconLab.setImage(icon);
+	iconLab.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
+
+	Label txtLab = new Label(dialogShell, SWT.NONE);
+	txtLab.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
+	StringBuilder sb = new StringBuilder();
+	for (String i : data) {
+	    sb.append(i + "\n");
+	}
+	txtLab.setText(sb.toString());
+	
+	Button btn = new Button(dialogShell, SWT.PUSH);
+	btn.setText("Close");
+	btn.addSelectionListener(closeAdapter);
+	btn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false,2,1));
+    }
+
+    private void initTEXTAREA() {
+	dialogShell.setText("JMameUI");
+	dialogShell.setLayout(new GridLayout(1, false));
+	Text text = new Text(dialogShell, SWT.BORDER | SWT.WRAP | SWT.V_SCROLL
+		| SWT.H_SCROLL);
+	text.setEditable(false);
+	StringBuilder sb = new StringBuilder();
+	for (String i : data) {
+	    sb.append(i + "\n");
+	}
+	text.append(sb.toString());
+	GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
+	gridData.heightHint = 5 * text.getLineHeight();
+	text.setLayoutData(gridData);
+	Button closeBtn = new Button(dialogShell, SWT.PUSH);
+	closeBtn.setText("Close");
+	closeBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+	closeBtn.addSelectionListener(closeAdapter);
+    }
 
 }
