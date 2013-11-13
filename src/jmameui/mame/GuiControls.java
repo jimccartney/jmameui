@@ -305,8 +305,6 @@ public class GuiControls {
 		i.createNewFile();
 		if (i == settings) {
 		    HashMap<String, String> tmp = new HashMap<String, String>();
-		    tmp.put("mame_ini_path", home + "/.mame");
-		    tmp.put("mame_rom_path", home + "/.mame/roms");
 		    tmp.put("system_mame_version", "null");
 		    tmp.put("system_mame_path", "null");
 		    tmp.put("use_system_mame", "true");

@@ -56,6 +56,7 @@ public class JMameUI extends SWTJMameUI {
 	    String ver = gCon.getSystemMame().getVersion().split(" ")[0];
 	    String preVer = gCon.readSettingsFile("system_mame_version");
 	    if (!ver.equals(preVer)) {
+		gCon.changeSettingsFile("system_mame_version", ver);
 		new MameDialog(	shell,
 			"System Mame version changed\nPlease rebuild the database.",
 			MameDialog.WARNING);
