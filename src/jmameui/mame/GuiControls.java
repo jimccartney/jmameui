@@ -44,7 +44,6 @@ public class GuiControls {
     private ArrayList<MameExecutable> mameExecutables = new ArrayList<MameExecutable>();
     private String romPath = "";
     private TreeSet<MameRom> romSet = new TreeSet<MameRom>();
-    private int bestRomsetCount = 0;
     private Comparator<MameExecutable> olderPref = new Comparator<MameExecutable>() {
 	public int compare(MameExecutable o1, MameExecutable o2) {
 	    return o1.getVersion().compareTo(o2.getVersion());
@@ -419,13 +418,13 @@ public class GuiControls {
     }
 
     public void addRom(final Collection<? extends File> files1,
-	    final String name) {
+	    final String name,final String path) {
 	new Thread(new Runnable() {
 	    @Override
 	    public void run() {
 		for (File i : files1) {
 		    try {
-			FileIO.unZip(i, romPath + "/" + name);
+			FileIO.unZip(i, path + "/" + name);
 		    } catch (IOException e) {
 			FileIO.writeToLogFile(e);
 		    }

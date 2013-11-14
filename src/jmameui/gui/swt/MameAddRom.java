@@ -20,9 +20,9 @@ import java.io.File;
 import java.util.ArrayList;
 
 import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -30,6 +30,7 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.List;
@@ -40,12 +41,13 @@ public class MameAddRom {
 
     private Label filesLabel;
     private Label romNameLabel;
-    private CLabel warningLabel;
+    private Label warningLabel;
+    private Label romPathLabel;
+    private Combo romPathCombo;
     private Button browseBtn;
     private Button closeBtn;
     private Button okBtn;
     private Button clearBtn;
-    private Button autoDectBtn;
     private List filesList;
     private Text romNameText;
     private Shell shell;
@@ -97,7 +99,8 @@ public class MameAddRom {
 
     private SelectionAdapter okBtnAdapter = new SelectionAdapter() {
 	public void widgetSelected(SelectionEvent arg0) {
-	    gCon.addRom(romFiles, romNameText.getText());
+	    gCon.addRom(romFiles, romNameText.getText(),
+		    romPathCombo.getItem(romPathCombo.getSelectionIndex()));
 	}
     };
 
@@ -109,12 +112,13 @@ public class MameAddRom {
 
     public MameAddRom(Shell owner, GuiControls gCon) {
 	shell = new Shell(owner, SWT.RESIZE);
-	shell.setLayout(new GridLayout(3, false));
+	shell.setLayout(new GridLayout(2, false));
 	shell.setImage(owner.getImage());
+	shell.setText("JMameUI");
 	this.gCon = gCon;
 	initUI();
 
-	shell.pack();
+	shell.setSize(400, 300);
 	shell.open();
     }
 
@@ -122,51 +126,70 @@ public class MameAddRom {
 	filesLabel = new Label(shell, SWT.NONE);
 	filesLabel.setText("Select romset zip");
 	filesLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false,
-		false, 3, 1));
+		false, 2, 1));
 
 	filesList = new List(shell, SWT.MULTI | SWT.BORDER | SWT.WRAP
 		| SWT.V_SCROLL);
 	filesList.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1,
-		1));
+		2));
 
 	browseBtn = new Button(shell, SWT.PUSH);
 	browseBtn.setText("Browse");
-	browseBtn.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false,
-		1, 1));
+	browseBtn.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
 	browseBtn.addSelectionListener(browseAdapter);
 
 	clearBtn = new Button(shell, SWT.PUSH);
 	clearBtn.setText("Clear");
-	clearBtn.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false, 1,
-		1));
+	clearBtn.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
 	clearBtn.addSelectionListener(clearAdapter);
 
 	romNameLabel = new Label(shell, SWT.NONE);
 	romNameLabel.setText("Romset name");
 	romNameLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false,
-		false, 3, 1));
+		false, 2, 1));
 
 	romNameText = new Text(shell, SWT.BORDER | SWT.WRAP);
 	romNameText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
-		false, 1, 1));
+		false, 2, 1));
 	romNameText.addModifyListener(romTextListener);
 
-	warningLabel = new CLabel(shell, SWT.NONE);
+	warningLabel = new Label(shell, SWT.NONE);
 	warningLabel.setText("Romset already exists");
 	warningLabel.setVisible(false);
 	warningLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false,
 		false, 2, 1));
 
+	romPathLabel = new Label(shell, SWT.NONE);
+	romPathLabel.setText("Romset Path");
+	romPathLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false,
+		false, 2, 1));
+
+	romPathCombo = new Combo(shell, SWT.READ_ONLY);
+	romPathCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
+		false, 2, 1));
+	ArrayList<String> lines = new ArrayList<String>();
+	for (MameExecutable i : gCon.getMameExecutables()) {
+	    for (String j : i.getRomPath()) {
+		if (!lines.contains(j)) {
+		    lines.add(j);
+		}
+	    }
+	}
+	String[] items = new String[lines.size()];
+	for (int i = 0; i < items.length; i++) {
+	    items[i] = lines.get(i);
+	}
+	romPathCombo.setItems(items);
+	romPathCombo.select(0);
+
 	closeBtn = new Button(shell, SWT.PUSH);
 	closeBtn.setText("Close");
-	closeBtn.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false,
-		2, 1));
+	closeBtn.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
 	closeBtn.addSelectionListener(closeBtnAdapter);
 
 	okBtn = new Button(shell, SWT.PUSH);
 	okBtn.setText("Ok");
-	okBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false,
-		1, 1));
+	okBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
 	okBtn.setEnabled(false);
 	okBtn.addSelectionListener(okBtnAdapter);
     }

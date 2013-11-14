@@ -1,6 +1,8 @@
 package jmameui.mame;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 public class MameExecutable {
 
@@ -93,6 +95,19 @@ public class MameExecutable {
 		iniFile.delete();
 		mameExec.delete();
 		rootDir.delete();
+	}
+	
+	public ArrayList<String> getRomPath(){
+	    String line = FileIO.getMameIniValue(this, "rompath");
+	    ArrayList<String> out = new ArrayList<String>();
+	    line = line.replace("$HOME", System.getProperty("user.home"));
+	    
+	    if(line.contains(";")){
+		out.addAll(Arrays.asList(line.split(";")));
+	    }else{
+		out.add(line);
+	    }
+	    return out;
 	}
 
 	public String getPath() {

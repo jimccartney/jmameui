@@ -332,7 +332,6 @@ public class FileIO {
 	for (int i = 0; i < list.getLength(); i++) {
 	    if (list.item(i).getNodeType() == Node.ELEMENT_NODE) {
 		Element e = (Element) list.item(i);
-		String tmp = "";
 		Properties p = new Properties();
 		FileOutputStream fos = new FileOutputStream(file);
 		p.setProperty("year", getElement(e, "year"));
@@ -426,7 +425,6 @@ public class FileIO {
 		    p.getInputStream()));
 
 	    String line = null;
-	    StringBuilder sb = new StringBuilder();
 	    while ((line = br.readLine()) != null) {
 
 		out.add(line);

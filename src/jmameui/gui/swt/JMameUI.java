@@ -43,7 +43,6 @@ public class JMameUI extends SWTJMameUI {
     }
 
     public JMameUI(Display display) {
-
 	shell = new Shell(display);
 	shell.setText("JMameUI");
 	shell.setImage(loadImage("windowicon.png"));
@@ -65,7 +64,7 @@ public class JMameUI extends SWTJMameUI {
 	} else if (MameFound != null) {
 	    new MameNotFound(this);
 	}
-
+	
 	while (!shell.isDisposed()) {
 	    if (!display.readAndDispatch()) {
 		display.sleep();
