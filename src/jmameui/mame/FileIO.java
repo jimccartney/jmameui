@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -376,18 +375,6 @@ public class FileIO {
 
 	p.store(fos, null);
 	fos.close();
-    }
-
-    /**
-     * Gets the file type
-     */
-    public static String getContentType(File file) {
-	try {
-	    return Files.probeContentType(file.toPath());
-	} catch (IOException e) {
-	    e.printStackTrace();
-	}
-	return null;
     }
 
     public static String getMameIniValue(MameExecutable me, String key) {

@@ -6,7 +6,7 @@ Front end for sdlmame
 Requirements
 =============
 Linux<br />
-JDK >= 5 <br />
+JDK >= 6 <br />
 eclipse SWT [http://www.eclipse.org/swt/](http://www.eclipse.org/swt/)<br />
   
 Compiling

@@ -425,16 +425,7 @@ public class GuiControls {
 	    public void run() {
 		for (File i : files1) {
 		    try {
-			if (FileIO.getContentType(i).equals("application/zip")) {
-
-			    FileIO.unZip(i, romPath + "/" + name);
-
-			} else if (FileIO.getContentType(i).equals(
-				"application/octet-stream")) {
-
-			    FileIO.copyFile(i, new File(romPath + "/" + name),
-				    false);
-			}
+			FileIO.unZip(i, romPath + "/" + name);
 		    } catch (IOException e) {
 			FileIO.writeToLogFile(e);
 		    }
@@ -458,7 +449,7 @@ public class GuiControls {
 	} else {
 	    romPath = FileIO.getMameIniValue(me, "rompath");
 	}
-	
+
 	mameExecutables.add(me);
     }
 
