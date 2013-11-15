@@ -418,7 +418,7 @@ public class GuiControls {
     }
 
     public void addRom(final Collection<? extends File> files1,
-	    final String name,final String path) {
+	    final String name, final String path) {
 	new Thread(new Runnable() {
 	    @Override
 	    public void run() {

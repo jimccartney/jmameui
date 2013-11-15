@@ -6,156 +6,165 @@ import java.util.Arrays;
 
 public class MameExecutable {
 
-	private String path = "";
-	private String version = "";
-	private boolean systemMame = false;
-	private String iniPath = "";
-	private File rootDir = null;
-	private File iniFile = null;
-	private File mameExec = null;
+    private String path = "";
+    private String version = "";
+    private boolean systemMame = false;
+    private String iniPath = "";
+    private File rootDir = null;
+    private File iniFile = null;
+    private File mameExec = null;
 
-	public MameExecutable(String path, String version, String romPath,boolean system) {
-		this.path = path;
-		this.version = version;
-		this.systemMame = system;
-		if (system) {
-			this.version += " (System)";
-		} else {
-			initPaths(romPath);
-		}
+    public MameExecutable(String path, String version, String romPath,
+	    boolean system) {
+	this.path = path;
+	this.version = version;
+	this.systemMame = system;
+	if (system) {
+	    this.version += " (System)";
+	} else {
+	    initPaths(romPath);
 	}
+    }
 
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + ((path == null) ? 0 : path.hashCode());
-		return result;
-	}
+    @Override
+    public int hashCode() {
+	final int prime = 31;
+	int result = 1;
+	result = prime * result + ((path == null) ? 0 : path.hashCode());
+	return result;
+    }
 
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		MameExecutable other = (MameExecutable) obj;
-		if (path == null) {
-			if (other.path != null)
-				return false;
-		} else if (!path.equals(other.path))
-			return false;
-		return true;
-	};
+    @Override
+    public boolean equals(Object obj) {
+	if (this == obj)
+	    return true;
+	if (obj == null)
+	    return false;
+	if (getClass() != obj.getClass())
+	    return false;
+	MameExecutable other = (MameExecutable) obj;
+	if (path == null) {
+	    if (other.path != null)
+		return false;
+	} else if (!path.equals(other.path))
+	    return false;
+	return true;
+    };
 
-	public void initPaths(String romPath) {
-		rootDir = new File(path).getParentFile();
-		iniFile = new File(rootDir, "mame.ini");
-		mameExec = new File(path);
-		iniPath = rootDir.getPath();
-		File[] dirs = new File[] { new File(rootDir, "cfg"),
-				new File(rootDir, "nvram"), new File(rootDir, "memcard"),
-				new File(rootDir, "inp"), new File(rootDir, "states"),
-				new File(rootDir, "snap"), new File(rootDir, "diff"),
-				new File(rootDir, "comments") };
-		
-		for (File i : dirs) {
-			if (!i.isDirectory()) {
-				i.mkdir();
-			}
-		}
+    public void initPaths(String romPath) {
+	rootDir = new File(path).getParentFile();
+	iniFile = new File(rootDir, "mame.ini");
+	mameExec = new File(path);
+	iniPath = rootDir.getPath();
+	File[] dirs = new File[] { new File(rootDir, "cfg"),
+		new File(rootDir, "nvram"), new File(rootDir, "memcard"),
+		new File(rootDir, "inp"), new File(rootDir, "states"),
+		new File(rootDir, "snap"), new File(rootDir, "diff"),
+		new File(rootDir, "comments") };
 
-		if (!iniFile.exists()) {
-			FileIO.writeTofile(FileIO.getProcessOutput(path + " -sc", false),
-					iniFile, false);
-			FileIO.changeMameIniValue(this, "inipath", rootDir.getPath());
-			FileIO.changeMameIniValue(this, "cfg_directory", rootDir.getPath()
-					+ "/cfg");
-			FileIO.changeMameIniValue(this, "nvram_directory",
-					rootDir.getPath() + "/nvram");
-			FileIO.changeMameIniValue(this, "memcard_directory",
-					rootDir.getPath() + "/memcard");
-			FileIO.changeMameIniValue(this, "input_directory",
-					rootDir.getPath() + "/inp");
-			FileIO.changeMameIniValue(this, "state_directory",
-					rootDir.getPath() + "/states");
-			FileIO.changeMameIniValue(this, "snapshot_directory",
-					rootDir.getPath() + "/snap");
-			FileIO.changeMameIniValue(this, "diff_directory", rootDir.getPath()
-					+ "/diff");
-			FileIO.changeMameIniValue(this, "comment_directory",
-					rootDir.getPath() + "/comments");
-			FileIO.changeMameIniValue(this, "rompath",romPath);
-		}
-	}
-
-	public void delete() {
-		iniFile.delete();
-		mameExec.delete();
-		rootDir.delete();
-	}
-	
-	public ArrayList<String> getRomPath(){
-	    String line = FileIO.getMameIniValue(this, "rompath");
-	    ArrayList<String> out = new ArrayList<String>();
-	    line = line.replace("$HOME", System.getProperty("user.home"));
-	    
-	    if(line.contains(";")){
-		out.addAll(Arrays.asList(line.split(";")));
-	    }else{
-		out.add(line);
+	for (File i : dirs) {
+	    if (!i.isDirectory()) {
+		i.mkdir();
 	    }
-	    return out;
 	}
 
-	public String getPath() {
-		return path;
+	if (!iniFile.exists()) {
+	    FileIO.writeTofile(FileIO.getProcessOutput(path + " -sc", false),
+		    iniFile, false);
+	    FileIO.changeMameIniValue(this, "inipath", rootDir.getPath());
+	    FileIO.changeMameIniValue(this, "cfg_directory", rootDir.getPath()
+		    + "/cfg");
+	    FileIO.changeMameIniValue(this, "nvram_directory",
+		    rootDir.getPath() + "/nvram");
+	    FileIO.changeMameIniValue(this, "memcard_directory",
+		    rootDir.getPath() + "/memcard");
+	    FileIO.changeMameIniValue(this, "input_directory",
+		    rootDir.getPath() + "/inp");
+	    FileIO.changeMameIniValue(this, "state_directory",
+		    rootDir.getPath() + "/states");
+	    FileIO.changeMameIniValue(this, "snapshot_directory",
+		    rootDir.getPath() + "/snap");
+	    FileIO.changeMameIniValue(this, "diff_directory", rootDir.getPath()
+		    + "/diff");
+	    FileIO.changeMameIniValue(this, "comment_directory",
+		    rootDir.getPath() + "/comments");
+	    FileIO.changeMameIniValue(this, "rompath", romPath);
 	}
+    }
 
-	public void setPath(String path) {
-		this.path = path;
+    public void delete() {
+	iniFile.delete();
+	mameExec.delete();
+	for (File i : rootDir.listFiles()) {
+	    if (i.isDirectory()) {
+		for (File j : i.listFiles()) {
+		    j.delete();
+		}
+	    }
+	    i.delete();
 	}
+	rootDir.delete();
+    }
 
-	public String getVersion() {
-		return version;
-	}
+    public ArrayList<String> getRomPath() {
+	String line = FileIO.getMameIniValue(this, "rompath");
+	ArrayList<String> out = new ArrayList<String>();
+	line = line.replace("$HOME", System.getProperty("user.home"));
 
-	public void setVersion(String version) {
-		this.version = version;
+	if (line.contains(";")) {
+	    out.addAll(Arrays.asList(line.split(";")));
+	} else {
+	    out.add(line);
 	}
+	return out;
+    }
 
-	public boolean isSystemMame() {
-		return systemMame;
-	}
+    public String getPath() {
+	return path;
+    }
 
-	public void setSystemMame(boolean system) {
-		this.systemMame = system;
-	}
+    public void setPath(String path) {
+	this.path = path;
+    }
 
-	public String getIniPath() {
-		return iniPath;
-	}
+    public String getVersion() {
+	return version;
+    }
 
-	public void setIniPath(String iniPath) {
-		this.iniPath = iniPath;
-	}
+    public void setVersion(String version) {
+	this.version = version;
+    }
 
-	public File getRootDir() {
-		return rootDir;
-	}
+    public boolean isSystemMame() {
+	return systemMame;
+    }
 
-	public void setRootDir(File rootDir) {
-		this.rootDir = rootDir;
-	}
+    public void setSystemMame(boolean system) {
+	this.systemMame = system;
+    }
 
-	public File getIniFile() {
-		return iniFile;
-	}
+    public String getIniPath() {
+	return iniPath;
+    }
 
-	public void setIniFile(File iniFile) {
-		this.iniFile = iniFile;
-	}
+    public void setIniPath(String iniPath) {
+	this.iniPath = iniPath;
+    }
+
+    public File getRootDir() {
+	return rootDir;
+    }
+
+    public void setRootDir(File rootDir) {
+	this.rootDir = rootDir;
+    }
+
+    public File getIniFile() {
+	return iniFile;
+    }
+
+    public void setIniFile(File iniFile) {
+	this.iniFile = iniFile;
+    }
 
 }
