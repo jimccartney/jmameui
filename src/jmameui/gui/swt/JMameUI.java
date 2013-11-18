@@ -48,7 +48,7 @@ public class JMameUI extends SWTJMameUI {
 	shell.setImage(loadImage("windowicon.png"));
 	initUI();
 	shell.open();
-
+	new MameDialog(shell, "The flip of the flip error", MameDialog.INFORMATION);
 	Boolean MameFound = gCon.start();
 
 	if (MameFound != null && MameFound) {

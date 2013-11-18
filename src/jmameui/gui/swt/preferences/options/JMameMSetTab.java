@@ -51,7 +51,7 @@ public class JMameMSetTab {
 			dialog.setFilterPath(System.getProperty("user.home"));
 			String newMame = dialog.open();
 			if (newMame != null) {
-				gCon.addMameExecutable(new File(newMame));
+				gCon.addMameExecutable(new File(newMame),false);
 				mameExecList.removeAll();
 				addToList(mameExecList, gCon.getMameExecutables());
 			}

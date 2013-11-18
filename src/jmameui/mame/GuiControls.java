@@ -110,19 +110,26 @@ public class GuiControls {
      * @param mameExec
      *            mame exec to be copied
      */
-    public void addMameExecutable(File mameExec) {
+    public void addMameExecutable(File mameExec, boolean sysMame) {
 	try {
-	    String version = getMameVersion(mameExec.getPath());
-	    File dir = new File(mameDir, version);
+	    if (sysMame) {
+		setSystemMameInfo(mameExec.getPath());
+		changeSettingsFile("system_mame_path", mameExec.getPath());
+		changeSettingsFile("system_mame_version",getMameVersion(mameExec.getPath()));
+	    } else {
+		String version = getMameVersion(mameExec.getPath());
+		File dir = new File(mameDir, version);
 
-	    FileIO.copyFile(mameExec, dir, true);
+		FileIO.copyFile(mameExec, dir, true);
 
-	    File nMame = new File(dir, "mame");
-	    File tmp = new File(dir, mameExec.getName());
-	    tmp.renameTo(nMame);
+		File nMame = new File(dir, "mame");
+		File tmp = new File(dir, mameExec.getName());
+		tmp.renameTo(nMame);
 
-	    mameExecutables.add(new MameExecutable(nMame.getPath(), version,
-		    nMame.getPath(), false));
+		mameExecutables.add(new MameExecutable(nMame.getPath(),
+			version, nMame.getPath(), false));
+	    }
+
 	} catch (IOException e) {
 	    FileIO.writeToLogFile(e);
 	}
