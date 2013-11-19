@@ -48,7 +48,6 @@ public class JMameUI extends SWTJMameUI {
 	shell.setImage(loadImage("windowicon.png"));
 	initUI();
 	shell.open();
-
 	Boolean MameFound = gCon.start();
 
 	if (MameFound != null && MameFound) {
@@ -181,6 +180,5 @@ public class JMameUI extends SWTJMameUI {
     public void viewBadRomsets() {
 	new MameDialog(shell, gCon.getUnavailableRomText(),
 		MameDialog.TEXTAREA);
-
-    }
+    }  
 }

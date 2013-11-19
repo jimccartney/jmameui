@@ -24,7 +24,7 @@ public class MameCombo extends Composite {
 	label = new Label(this, SWT.NONE);
 	label.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, true, 1, 1));
 	combo = new Combo(this, arg1);
-	combo.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, true, 1, 1));	
+	combo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true, 1, 1));	
     }
 
 

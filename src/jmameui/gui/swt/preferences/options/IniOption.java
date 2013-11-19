@@ -206,7 +206,7 @@ public class IniOption {
 
 	mc.getLabel().setToolTipText(getToolTip(mameOption));
 	combo.addSelectionListener(mameComboAdapter);
-	mc.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 2, 1));
+	mc.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
 	mc.setLabelText(name);
 	mc.setOption(mameOption);
     }
@@ -224,7 +224,7 @@ public class IniOption {
 	}
 	btn.setToolTipText(getToolTip(mameOption));
 	btn.addSelectionListener(checkBoxAdapter);
-	btn.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 2, 1));
+	btn.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
     }
 
     public void createMamePathComp(String name, String mameOption, int option) {
@@ -276,7 +276,8 @@ public class IniOption {
 	ms.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
     }
 
-    public void createIntSpinner(String name, String mameOption,int minValue, int maxValue) {
+    public void createIntSpinner(String name, String mameOption, int minValue,
+	    int maxValue) {
 	MameSpinner ms = new MameSpinner(group, SWT.NONE,
 		MameSpinner.INT_SPINNER);
 	Spinner spin = ms.getSpin();
@@ -298,7 +299,6 @@ public class IniOption {
 	ms.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
     }
 
-
     public void createTextBox(String name, String mameOption) {
 	MameTextComp mtc = new MameTextComp(group, SWT.NONE);
 	Text txt = mtc.getText();
@@ -316,7 +316,7 @@ public class IniOption {
 	mtc.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 	txt.addModifyListener(TxtModifyListener);
     }
-
+    
     public String getToolTip(String option) {
 	String op = "-" + option + " ";
 	for (String i : mameUsage) {

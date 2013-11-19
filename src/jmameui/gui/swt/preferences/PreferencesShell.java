@@ -48,6 +48,7 @@ import jmameui.mame.GuiControls;
 import jmameui.mame.MameExecutable;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -79,6 +80,9 @@ public class PreferencesShell {
     private List mamePrefList;
     private MameExecutable currExec = null;
     private GuiControls Gcon;
+    ScrolledComposite sc;
+    ScrolledComposite sc1;
+
     private HashMap<String, IniOption> options = new HashMap<String, IniOption>();
 
     private SelectionAdapter closeBtnListener = new SelectionAdapter() {
@@ -105,6 +109,7 @@ public class PreferencesShell {
 
 	    for (Control i : group.getChildren()) {
 		i.dispose();
+
 	    }
 
 	    try {
@@ -129,8 +134,11 @@ public class PreferencesShell {
 	    } catch (InvocationTargetException e) {
 		FileIO.writeToLogFile(e);
 	    }
-
+	    
+	 
+	    sc1.setMinSize(group.computeSize(SWT.DEFAULT,SWT.DEFAULT));
 	    group.layout();
+	    mameTabsComp.layout(true, true);
 	}
     };
 
@@ -140,11 +148,16 @@ public class PreferencesShell {
 	shell.setLayout(new GridLayout(1, false));
 	initUI();
 
+	popOptions();
 	shell.pack();
 	shell.setSize(640, 480);
 	shell.open();
 
-	popOptions();
+	while (!shell.isDisposed()) {
+	    if (!shell.getDisplay().readAndDispatch()) {
+		shell.getDisplay().sleep();
+	    }
+	}
     }
 
     public void popOptions() {
@@ -169,11 +182,13 @@ public class PreferencesShell {
 	options.put("SDL Joystick", new SDLKeyboardOption());
 	options.put("Per-Window Video", new PerWindowVideoOption());
 	options.put("OpenGL", new OpenGLOption());
-	
+
 	String[] keys = options.keySet().toArray(new String[0]);
 	Arrays.sort(keys);
 	mamePrefList.setItems(keys);
 	mamePrefList.setSelection(0);
+	sc.setMinSize(mamePrefList.computeSize(150,
+		mamePrefList.getItemHeight() * mamePrefList.getItemCount()));
 	mameCombo.notifyListeners(SWT.Selection, new Event());
     }
 
@@ -201,18 +216,29 @@ public class PreferencesShell {
 	mameCombo = new Combo(mameTabsComp, SWT.READ_ONLY);
 	addToMameCombo();
 	mameCombo.addSelectionListener(mameComboAdapter);
-	mameCombo.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false,
+	mameCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false,
 		false, 1, 1));
 	mameCombo.select(0);
+	
+	sc1 = new ScrolledComposite(mameTabsComp, SWT.BORDER | SWT.H_SCROLL
+		| SWT.V_SCROLL);
+	sc1.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true,1,2));
+	sc1.setExpandHorizontal(true);
+	sc1.setExpandVertical(true);
 
-	group = new Group(mameTabsComp, SWT.SHADOW_ETCHED_IN | SWT.H_SCROLL);
-	group.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 2));
+	group = new Group(sc1, SWT.SHADOW_ETCHED_IN | SWT.V_SCROLL);
 	group.setLayout(new GridLayout(1, false));
-
-	mamePrefList = new List(mameTabsComp, SWT.V_SCROLL | SWT.BORDER);
+	sc = new ScrolledComposite(mameTabsComp, SWT.BORDER | SWT.H_SCROLL
+		| SWT.V_SCROLL);
+	sc1.setContent(group);
+	
+	sc.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true));
+	sc.setExpandHorizontal(true);
+	sc.setExpandVertical(true);
+	mamePrefList = new List(sc, SWT.BORDER);
 	mamePrefList.addSelectionListener(mamePrefListAdapter);
-	mamePrefList.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false,
-		false, 1, 1));
+	sc.setContent(mamePrefList);
+	
 
 	jMameMTab = new TabItem(jMameTabs, SWT.NONE);
 	jMameMTab.setText("Mame");

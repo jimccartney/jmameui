@@ -29,7 +29,7 @@ public class MamePathComp extends Composite {
 	text.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 	
 	button = new Button(this,SWT.PUSH);
-	button.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+	button.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
 	button.setText("Browse");
     }
 
