@@ -55,7 +55,8 @@ public class JMameUI extends SWTJMameUI {
 	    String preVer = gCon.readSettingsFile("system_mame_version");
 	    if (!ver.equals(preVer)) {
 		gCon.changeSettingsFile("system_mame_version", ver);
-		new MameDialog(	shell,
+		new MameDialog(
+			shell,
 			"System Mame version changed\nPlease rebuild the database.",
 			MameDialog.WARNING);
 	    }
@@ -63,7 +64,7 @@ public class JMameUI extends SWTJMameUI {
 	} else if (MameFound != null) {
 	    new MameNotFound(this);
 	}
-	
+
 	while (!shell.isDisposed()) {
 	    if (!display.readAndDispatch()) {
 		display.sleep();
@@ -125,8 +126,11 @@ public class JMameUI extends SWTJMameUI {
 	Menu fileMenu = createMenu("&File");
 	Menu romMenu = createMenu("&Rom");
 	Menu viewMenu = createMenu("&View");
-
-	MenuItem exitAct = createMenuItem(fileMenu, "&Exit",
+	createMenuItem(fileMenu, "View Logs",
+		"configure.png", viewLogatapet);
+	addToFav = createMenuItem(romMenu, "Add rom to favourites",
+		"emblem-favorite.png", addFavListener);
+	createMenuItem(fileMenu, "&Exit",
 		"application-exit.png", exitAdapter);
 	MenuItem addRomAct = createMenuItem(romMenu, "&Add romset",
 		"list-add.png", addRomAdapter);
@@ -134,11 +138,9 @@ public class JMameUI extends SWTJMameUI {
 		"view-refresh.png", rebuildBtnListener);
 	MenuItem prefAct = createMenuItem(viewMenu, "&Preferences",
 		"configure.png", viewPrefListener);
-	MenuItem badRomAct = createMenuItem(viewMenu,
+	createMenuItem(viewMenu,
 		"&Bad romset information", "dialog-warning.png",
 		viewUnavailRomsets);
-	addToFav = createMenuItem(romMenu, "Add rom to favourites",
-		"emblem-favorite.png", addFavListener);
 
 	addMenuItemToToolBar(addToFav, toolBar, addFavListener);
 	addMenuItemToToolBar(buildDBAct, toolBar, rebuildBtnListener);
@@ -178,7 +180,6 @@ public class JMameUI extends SWTJMameUI {
     }
 
     public void viewBadRomsets() {
-	new MameDialog(shell, gCon.getUnavailableRomText(),
-		MameDialog.TEXTAREA);
-    }  
+	new MameDialog(shell, gCon.getUnavailableRomText(), MameDialog.TEXTAREA);
+    }
 }

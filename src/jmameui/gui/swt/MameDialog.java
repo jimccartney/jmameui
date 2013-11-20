@@ -83,7 +83,6 @@ public class MameDialog {
 	    InitInformation(true);
 	    break;
 	}
-	dialogShell.pack();
 	dialogShell.open();
     }
 
@@ -124,7 +123,7 @@ public class MameDialog {
 	btn.setText("Close");
 	btn.addSelectionListener(closeAdapter);
 	btn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
-
+	dialogShell.pack();
     }
 
     private void initTEXTAREA() {
@@ -145,6 +144,7 @@ public class MameDialog {
 	closeBtn.setText("Close");
 	closeBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
 	closeBtn.addSelectionListener(closeAdapter);
+	dialogShell.setSize(640,480);
     }
 
 }

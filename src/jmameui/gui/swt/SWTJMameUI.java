@@ -1,4 +1,4 @@
-/*
+/**
  * This file is part of JMameUI.
  * 
  * JMameUI is free software: you can redistribute it and/or modify
@@ -13,6 +13,7 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ * 
  */
 package jmameui.gui.swt;
 
@@ -177,6 +178,12 @@ public abstract class SWTJMameUI {
 		public void widgetSelected(SelectionEvent arg0) {
 			new MameAddRom(shell, gCon);
 		};
+	};
+	
+	SelectionAdapter viewLogatapet = new SelectionAdapter() {
+	    public void widgetSelected(SelectionEvent arg0) {
+		new ViewLogs(shell, gCon);
+	    };
 	};
 
 	ArrayList<MameRom> roms;

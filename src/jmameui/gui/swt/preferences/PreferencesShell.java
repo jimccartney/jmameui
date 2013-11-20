@@ -188,7 +188,7 @@ public class PreferencesShell {
 	mamePrefList.setItems(keys);
 	mamePrefList.setSelection(0);
 	sc.setMinSize(mamePrefList.computeSize(150,
-		mamePrefList.getItemHeight() * mamePrefList.getItemCount()));
+		mamePrefList.getItemHeight() * (mamePrefList.getItemCount()+1)));
 	mameCombo.notifyListeners(SWT.Selection, new Event());
     }
 
