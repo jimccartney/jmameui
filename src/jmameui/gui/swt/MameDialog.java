@@ -46,6 +46,7 @@ public class MameDialog {
     private SelectionAdapter closeAdapter = new SelectionAdapter() {
 	public void widgetSelected(SelectionEvent arg0) {
 	    dialogShell.dispose();
+	    super.widgetSelected(arg0);
 	}
     };
 

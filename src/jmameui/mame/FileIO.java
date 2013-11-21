@@ -457,6 +457,8 @@ public class FileIO {
      */
     public static void unZip(File zip, String ouputDirectory)
 	    throws IOException {
+	if (ouputDirectory.length()>0)
+	    throw new IOException();
 	File dir = new File(ouputDirectory);
 	if (!dir.exists()) {
 	    dir.mkdir();
@@ -522,7 +524,7 @@ public class FileIO {
 		os.close();
 	}
     }
-         
+
     public static void setLogDir(File file) {
 	logDir = file;
     }

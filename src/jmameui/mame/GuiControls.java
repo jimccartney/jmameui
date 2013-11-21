@@ -115,7 +115,8 @@ public class GuiControls {
 	    if (sysMame) {
 		setSystemMameInfo(mameExec.getPath());
 		changeSettingsFile("system_mame_path", mameExec.getPath());
-		changeSettingsFile("system_mame_version",getMameVersion(mameExec.getPath()));
+		changeSettingsFile("system_mame_version",
+			getMameVersion(mameExec.getPath()));
 	    } else {
 		String version = getMameVersion(mameExec.getPath());
 		File dir = new File(mameDir, version);
@@ -424,22 +425,7 @@ public class GuiControls {
 	return out;
     }
 
-    public void addRom(final Collection<? extends File> files1,
-	    final String name, final String path) {
-	new Thread(new Runnable() {
-	    @Override
-	    public void run() {
-		for (File i : files1) {
-		    try {
-			FileIO.unZip(i, path + "/" + name);
-		    } catch (IOException e) {
-			FileIO.writeToLogFile(e);
-		    }
-		}
-	    }
-
-	}).start();
-    }
+    
 
     private void setSystemMameInfo(String path) {
 	File iniFile = new File(mameDir, "mame.ini");

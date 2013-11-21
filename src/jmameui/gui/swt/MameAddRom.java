@@ -17,8 +17,11 @@
 package jmameui.gui.swt;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 
+import jmameui.mame.FileIO;
 import jmameui.mame.GuiControls;
 import jmameui.mame.MameExecutable;
 
@@ -53,6 +56,7 @@ public class MameAddRom {
     private Shell shell;
     private GuiControls gCon;
     private ArrayList<File> romFiles = new ArrayList<File>();
+    private boolean romCopied;
 
     private SelectionAdapter browseAdapter = new SelectionAdapter() {
 	public void widgetSelected(SelectionEvent arg0) {
@@ -99,8 +103,37 @@ public class MameAddRom {
 
     private SelectionAdapter okBtnAdapter = new SelectionAdapter() {
 	public void widgetSelected(SelectionEvent arg0) {
-	    gCon.addRom(romFiles, romNameText.getText(),
-		    romPathCombo.getItem(romPathCombo.getSelectionIndex()));
+	    romCopied = false;
+	    final String path = romPathCombo.getItem(romPathCombo
+		    .getSelectionIndex());
+	    final String name = romNameText.getText();
+	    Thread t = new Thread(new Runnable() {
+		public void run() {
+		    try {
+			for (File i : romFiles) {
+			    FileIO.unZip(i, path + "/" + name);
+			}
+			romCopied = true;
+		    } catch (IOException e) {
+			FileIO.writeToLogFile(e);
+		    }
+		}
+	    });
+	    
+	    t.start();
+	    try {
+		t.join();
+	    } catch (InterruptedException e) {
+		FileIO.writeToLogFile(e);
+	    }
+
+	    if (romCopied) {
+		new MameDialog(shell, "Romset copy sucessful",
+			MameDialog.INFORMATION);
+	    }else{
+		new MameDialog(shell, "Romset copy failed",
+			MameDialog.ERROR);
+	    }
 	}
     };
 
@@ -188,7 +221,7 @@ public class MameAddRom {
 	closeBtn.addSelectionListener(closeBtnAdapter);
 
 	okBtn = new Button(shell, SWT.PUSH);
-	okBtn.setText("Ok");
+	okBtn.setText("Copy");
 	okBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
 	okBtn.setEnabled(false);
 	okBtn.addSelectionListener(okBtnAdapter);
