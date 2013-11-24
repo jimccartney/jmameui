@@ -65,11 +65,11 @@ public abstract class SWTJMameUI {
 	Text searchField;
 	Label statusLabel;
 	MenuItem addToFav;
-	String[] tableTitles = { "Game name", "Description", "Manufacturer",
-			"Year", "Emulation state", "Mame version" };
+	static String[] tableTitles = { "Game name", "Description", "Manufacturer",
+			"Year", "Emulation state", "Mame version", "Genre" };
 	Image favImg = loadImage("emblem-favorite.png");
 	Image notFavImg = loadImage("emblem-not-favorite.png");
-
+	private MameTableSort mts = new MameTableSort();
 	SelectionAdapter exitAdapter = new SelectionAdapter() {
 		public void widgetSelected(SelectionEvent e) {
 			shell.getDisplay().dispose();
@@ -173,17 +173,17 @@ public abstract class SWTJMameUI {
 			new PreferencesShell(shell, gCon);
 		};
 	};
-	
+
 	SelectionAdapter addRomAdapter = new SelectionAdapter() {
 		public void widgetSelected(SelectionEvent arg0) {
 			new MameAddRom(shell, gCon);
 		};
 	};
-	
+
 	SelectionAdapter viewLogatapet = new SelectionAdapter() {
-	    public void widgetSelected(SelectionEvent arg0) {
-		new ViewLogs(shell, gCon);
-	    };
+		public void widgetSelected(SelectionEvent arg0) {
+			new ViewLogs(shell, gCon);
+		};
 	};
 
 	ArrayList<MameRom> roms;
@@ -236,102 +236,12 @@ public abstract class SWTJMameUI {
 	}
 
 	public Comparator<MameRom> getComparator(String colName, boolean revSort) {
-		if (colName.equals(tableTitles[0])) {
-			if (revSort) {
-				return romNameRevSort;
-			}
-			return romNameSort;
-		} else if (colName.equals(tableTitles[1])) {
-			if (revSort) {
-				return romDescRevSort;
-			}
-			return romDescSort;
-		} else if (colName.equals(tableTitles[2])) {
-			if (revSort) {
-				return romManuRevSort;
-			}
-			return romManuSort;
-		} else if (colName.equals(tableTitles[3])) {
-			if (revSort) {
-				return romYearRevSort;
-			}
-			return romYearSort;
-		} else if (colName.equals(tableTitles[4])) {
-			if (revSort) {
-				return romEmuRevSort;
-			}
-			return romEmuSort;
-		} else if (colName.equals(tableTitles[5])) {
-			if (revSort) {
-				return romMameRevSort;
-			}
-			return romMameSort;
+		mts.setColumnName(colName);
+		if (revSort) {
+			return mts.getReverseSort();
 		}
-		return null;
+		return mts.getForwardSort();
 	}
-
-	Comparator<MameRom> romNameSort = new Comparator<MameRom>() {
-		public int compare(MameRom o1, MameRom o2) {
-			return o1.getName().compareToIgnoreCase(o2.getName());
-		}
-	};
-	Comparator<MameRom> romNameRevSort = new Comparator<MameRom>() {
-		public int compare(MameRom o1, MameRom o2) {
-			return o2.getName().compareToIgnoreCase(o1.getName());
-		}
-	};
-	Comparator<MameRom> romDescSort = new Comparator<MameRom>() {
-		public int compare(MameRom o1, MameRom o2) {
-			return o1.getDescription().compareToIgnoreCase(o2.getDescription());
-		}
-	};
-	Comparator<MameRom> romDescRevSort = new Comparator<MameRom>() {
-		public int compare(MameRom o1, MameRom o2) {
-			return o2.getDescription().compareToIgnoreCase(o1.getDescription());
-		}
-	};
-	Comparator<MameRom> romManuSort = new Comparator<MameRom>() {
-		public int compare(MameRom o1, MameRom o2) {
-			return o1.getManufacturer().compareToIgnoreCase(
-					o2.getManufacturer());
-		}
-	};
-	Comparator<MameRom> romManuRevSort = new Comparator<MameRom>() {
-		public int compare(MameRom o1, MameRom o2) {
-			return o2.getManufacturer().compareToIgnoreCase(
-					o1.getManufacturer());
-		}
-	};
-	Comparator<MameRom> romYearSort = new Comparator<MameRom>() {
-		public int compare(MameRom o1, MameRom o2) {
-			return o1.getYear().compareToIgnoreCase(o2.getYear());
-		}
-	};
-	Comparator<MameRom> romYearRevSort = new Comparator<MameRom>() {
-		public int compare(MameRom o1, MameRom o2) {
-			return o2.getYear().compareToIgnoreCase(o1.getYear());
-		}
-	};
-	Comparator<MameRom> romEmuSort = new Comparator<MameRom>() {
-		public int compare(MameRom o1, MameRom o2) {
-			return o1.getEmuState().compareToIgnoreCase(o2.getEmuState());
-		}
-	};
-	Comparator<MameRom> romEmuRevSort = new Comparator<MameRom>() {
-		public int compare(MameRom o1, MameRom o2) {
-			return o2.getEmuState().compareToIgnoreCase(o1.getEmuState());
-		}
-	};
-	Comparator<MameRom> romMameSort = new Comparator<MameRom>() {
-		public int compare(MameRom o1, MameRom o2) {
-			return o1.getMameVersion().compareToIgnoreCase(o2.getMameVersion());
-		}
-	};
-	Comparator<MameRom> romMameRevSort = new Comparator<MameRom>() {
-		public int compare(MameRom o1, MameRom o2) {
-			return o2.getMameVersion().compareToIgnoreCase(o1.getMameVersion());
-		}
-	};
 
 	public abstract void initUI();
 
@@ -408,7 +318,7 @@ public abstract class SWTJMameUI {
 	public void addToTable(Table table, MameRom mr) {
 		String[] tmp = { mr.getName(), mr.getDescription(),
 				mr.getManufacturer(), mr.getYear(), mr.getEmuState(),
-				mr.getMameVersion() };
+				mr.getMameVersion(), mr.getGenre() };
 		Image tmpImg = (mr.isFavourite()) ? favImg : notFavImg;
 		TableItem item = new TableItem(table, SWT.NONE);
 		item.setImage(0, tmpImg);
@@ -421,6 +331,10 @@ public abstract class SWTJMameUI {
 				j.pack();
 			}
 		}
+	}
+
+	public static String[] getColumnNames() {
+		return tableTitles;
 	}
 
 	public Shell getShell() {

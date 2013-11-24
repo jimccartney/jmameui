@@ -27,6 +27,7 @@ public class MameRom implements Comparable<MameRom>{
 	private String emuState = "";
 	private boolean favourite = false;
 	private String mameVersion;
+	private String genre = "";
 	
 	public MameRom(String name,String mPath, boolean gr){
 		this.name = name;
@@ -34,6 +35,20 @@ public class MameRom implements Comparable<MameRom>{
 		this.goodRom = gr;
 	}
 	
+	
+	
+	public String getGenre() {
+		return genre;
+	}
+
+
+
+	public void setGenre(String genre) {
+		this.genre = genre;
+	}
+
+
+
 	public MameRom(String name){
 	  this.name = name;
 	}

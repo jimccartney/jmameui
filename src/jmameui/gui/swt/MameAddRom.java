@@ -19,7 +19,6 @@ package jmameui.gui.swt;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 
 import jmameui.mame.FileIO;
 import jmameui.mame.GuiControls;
