@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import jmameui.mame.MameRom;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -42,14 +43,14 @@ public class JMameUI extends SWTJMameUI {
 	display.dispose();
     }
 
-    public JMameUI(Display display) {
+       public JMameUI(Display display) {
 	shell = new Shell(display);
 	shell.setText("JMameUI");
 	shell.setImage(loadImage("windowicon.png"));
 	initUI();
 	shell.open();
 	Boolean MameFound = gCon.start();
-
+	
 	if (MameFound != null && MameFound) {
 	    String ver = gCon.getSystemMame().getVersion().split(" ")[0];
 	    String preVer = gCon.readSettingsFile("system_mame_version");
@@ -64,7 +65,7 @@ public class JMameUI extends SWTJMameUI {
 	} else if (MameFound != null) {
 	    new MameNotFound(this);
 	}
-
+	launchButton.setVisible(false);
 	while (!shell.isDisposed()) {
 	    if (!display.readAndDispatch()) {
 		display.sleep();
@@ -126,6 +127,8 @@ public class JMameUI extends SWTJMameUI {
 	Menu fileMenu = createMenu("&File");
 	Menu romMenu = createMenu("&Rom");
 	Menu viewMenu = createMenu("&View");
+	Menu helpMenu = createMenu("&Help");
+	
 	createMenuItem(fileMenu, "View Logs",
 		"configure.png", viewLogatapet);
 	addToFav = createMenuItem(romMenu, "Add rom to favourites",
@@ -141,6 +144,7 @@ public class JMameUI extends SWTJMameUI {
 	createMenuItem(viewMenu,
 		"&Bad romset information", "dialog-warning.png",
 		viewUnavailRomsets);
+	createMenuItem(helpMenu, "About JMameUI", "help-about.png", aboutDialogAdapter);
 
 	addMenuItemToToolBar(addToFav, toolBar, addFavListener);
 	addMenuItemToToolBar(buildDBAct, toolBar, rebuildBtnListener);

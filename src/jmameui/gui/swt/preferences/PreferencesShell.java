@@ -21,6 +21,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.HashMap;
 
+import jmameui.gui.swt.SWTJMameUI;
 import jmameui.gui.swt.preferences.options.ArtworkOption;
 import jmameui.gui.swt.preferences.options.CorePerformanceOption;
 import jmameui.gui.swt.preferences.options.DebuggingOption;
@@ -29,6 +30,7 @@ import jmameui.gui.swt.preferences.options.IniOption;
 import jmameui.gui.swt.preferences.options.InputAutomatic;
 import jmameui.gui.swt.preferences.options.InputOptions;
 import jmameui.gui.swt.preferences.options.JMameMSetTab;
+import jmameui.gui.swt.preferences.options.JMameTableTab;
 import jmameui.gui.swt.preferences.options.MiscOption;
 import jmameui.gui.swt.preferences.options.OpenGLOption;
 import jmameui.gui.swt.preferences.options.OutputDirOption;
@@ -80,6 +82,7 @@ public class PreferencesShell {
     private List mamePrefList;
     private MameExecutable currExec = null;
     private GuiControls Gcon;
+    private SWTJMameUI jMame;
     ScrolledComposite sc;
     ScrolledComposite sc1;
 
@@ -141,10 +144,12 @@ public class PreferencesShell {
 	    mameTabsComp.layout(true, true);
 	}
     };
+    private TabItem jMameTableTab;
 
-    public PreferencesShell(Shell owner, GuiControls g) {
+    public PreferencesShell(Shell owner, SWTJMameUI j) {
 	shell = new Shell(owner, SWT.RESIZE);
-	Gcon = g;
+	Gcon = j.getgCon();
+	jMame = j;
 	shell.setLayout(new GridLayout(1, false));
 	initUI();
 
@@ -244,6 +249,10 @@ public class PreferencesShell {
 	jMameMTab.setText("Mame");
 	jMameMTab.setControl(new JMameMSetTab(jMameTabs, Gcon,
 		SWT.SHADOW_ETCHED_OUT).getGroup());
+	
+	jMameTableTab = new TabItem(jMameTabs, SWT.NONE);
+	jMameTableTab.setText("Tables");
+	jMameTableTab.setControl(new JMameTableTab(jMameTabs, jMame).getGroup());
 
 	closeBtn = new Button(shell, SWT.PUSH);
 	closeBtn.setText("Close");
