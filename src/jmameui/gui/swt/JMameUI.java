@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import jmameui.mame.MameRom;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -65,7 +64,7 @@ public class JMameUI extends SWTJMameUI {
 	} else if (MameFound != null) {
 	    new MameNotFound(this);
 	}
-	launchButton.setVisible(false);
+ 
 	while (!shell.isDisposed()) {
 	    if (!display.readAndDispatch()) {
 		display.sleep();

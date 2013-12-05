@@ -41,6 +41,8 @@ public class MameTableSort {
 			return m.getMameVersion();
 		} else if (columnName.equals("Genre")) {
 			return m.getGenre();
+		}else if (columnName.equals("Clone Of")) {
+			return m.getClone();
 		}
 		return "";
 	}

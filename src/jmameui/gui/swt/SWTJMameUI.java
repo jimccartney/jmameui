@@ -323,7 +323,7 @@ public abstract class SWTJMameUI {
     public void addToTable(Table table, MameRom mr) {
 	String[] tmp = { mr.getName(), mr.getDescription(),
 		mr.getManufacturer(), mr.getYear(), mr.getEmuState(),
-		mr.getMameVersion(), mr.getGenre() };
+		mr.getMameVersion(), mr.getGenre(),mr.getClone()};
 	Image tmpImg = (mr.isFavourite()) ? favImg : notFavImg;
 	TableItem item = new TableItem(table, SWT.NONE);
 	item.setImage(0, tmpImg);

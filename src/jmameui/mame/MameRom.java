@@ -28,17 +28,24 @@ public class MameRom implements Comparable<MameRom>{
 	private boolean favourite = false;
 	private String mameVersion;
 	private String genre = "";
+	private String clone = "";
 	
 	public MameRom(String name,String mPath, boolean gr){
 		this.name = name;
 		this.MamePath = mPath;
 		this.goodRom = gr;
 	}
-	
-	
-	
+
 	public String getGenre() {
 		return genre;
+	}
+	
+	public String getClone() {
+		return clone;
+	}
+
+	public void setClone(String clone) {
+		this.clone = clone;
 	}
 
 
@@ -46,8 +53,6 @@ public class MameRom implements Comparable<MameRom>{
 	public void setGenre(String genre) {
 		this.genre = genre;
 	}
-
-
 
 	public MameRom(String name){
 	  this.name = name;
