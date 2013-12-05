@@ -30,6 +30,7 @@ import jmameui.gui.swt.preferences.options.IniOption;
 import jmameui.gui.swt.preferences.options.InputAutomatic;
 import jmameui.gui.swt.preferences.options.InputOptions;
 import jmameui.gui.swt.preferences.options.JMameMSetTab;
+import jmameui.gui.swt.preferences.options.JMameSearchTab;
 import jmameui.gui.swt.preferences.options.JMameTableTab;
 import jmameui.gui.swt.preferences.options.MiscOption;
 import jmameui.gui.swt.preferences.options.OpenGLOption;
@@ -145,6 +146,7 @@ public class PreferencesShell {
 	}
     };
     private TabItem jMameTableTab;
+	private TabItem jMameSearchTab;
 
     public PreferencesShell(Shell owner, SWTJMameUI j) {
 	shell = new Shell(owner, SWT.RESIZE);
@@ -253,6 +255,10 @@ public class PreferencesShell {
 	jMameTableTab = new TabItem(jMameTabs, SWT.NONE);
 	jMameTableTab.setText("Tables");
 	jMameTableTab.setControl(new JMameTableTab(jMameTabs, jMame).getGroup());
+	
+	jMameSearchTab = new TabItem(jMameTabs, SWT.NONE);
+	jMameSearchTab.setText("Search");
+	jMameSearchTab.setControl(new JMameSearchTab(jMameTabs, jMame).getGroup());
 
 	closeBtn = new Button(shell, SWT.PUSH);
 	closeBtn.setText("Close");

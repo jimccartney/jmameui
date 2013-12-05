@@ -244,7 +244,8 @@ public class GuiControls {
 			HashMap<String, String> romInf = FileIO.getSettingFileLines(file);
 			String tmp = null;
 			m.setGenre(((tmp = genres.get(gameName)) != null) ? tmp : "????");
-			m.setClone(((tmp = clones.get(gameName)) != null) ? tmp : "Original");
+			m.setClone(((tmp = clones.get(gameName)) != null) ? tmp
+					: "Original");
 			m.setMameVersion(getMameExecutable(mamePath).getVersion());
 			m.setYear(romInf.get("year"));
 			m.setDescription(romInf.get("description"));
@@ -350,7 +351,10 @@ public class GuiControls {
 		setfile.put("use_system_mame", "true");
 		setfile.put("mame_sort", "system");
 		for (String i : getTableColumnsNames()) {
-			setfile.put(i.toLowerCase().replaceAll(" ", "_"), "true");
+			setfile.put(i.toLowerCase().replaceAll(" ", "_")
+					+ "_column_visible", "true");
+			setfile.put(i.toLowerCase().replaceAll(" ", "_") + "_search",
+					"true");
 		}
 
 		mainSettings = FileIO.getSettingFileLines(settings);
@@ -544,7 +548,20 @@ public class GuiControls {
 		HashMap<String, String> out = new HashMap<String, String>();
 
 		for (String i : getTableColumnsNames()) {
-			String op = i.toLowerCase().replaceAll(" ", "_");
+			String op = i.toLowerCase().replaceAll(" ", "_")
+					+ "_column_visible";
+			if (mainSettings.get(op) != null) {
+				out.put(op, mainSettings.get(op));
+			}
+		}
+		return out;
+	}
+
+	public HashMap<String, String> getSearchOptions() {
+		HashMap<String, String> out = new HashMap<String, String>();
+		
+		for (String i : getTableColumnsNames()) {
+			String op = i.toLowerCase().replaceAll(" ", "_") + "_search";
 			if (mainSettings.get(op) != null) {
 				out.put(op, mainSettings.get(op));
 			}
@@ -605,6 +622,33 @@ public class GuiControls {
 				"Year", "Emulation State", "Mame Version", "Genre", "Clone Of" };
 	}
 
+	public String getMameRomOption(String op, MameRom m) {
+		if (op == null || m == null) {
+			return "";
+		}
+
+		String[] cols = getTableColumnsNames();
+		if (op.equals(cols[0])) {
+			return m.getName();
+		} else if (op.equals(cols[1])) {
+			return m.getDescription();
+		} else if (op.equals(cols[2])) {
+			return m.getManufacturer();
+		} else if (op.equals(cols[3])) {
+			return m.getYear();
+		} else if (op.equals(cols[4])) {
+			return m.getEmuState();
+		} else if (op.equals(cols[5])) {
+			return m.getMameVersion();
+		} else if (op.equals(cols[6])) {
+			return m.getGenre();
+		} else if (op.equals(cols[7])) {
+			return m.getClone();
+		}
+
+		return "";
+	}
+
 	public MameExecutable getSystemMame() {
 		for (MameExecutable i : mameExecutables) {
 			if (i.isSystemMame()) {
@@ -632,6 +676,6 @@ public class GuiControls {
 	}
 
 	public static String getJMameUIVersion() {
-		return "0.2.1";
+		return "0.2.2";
 	}
 }
