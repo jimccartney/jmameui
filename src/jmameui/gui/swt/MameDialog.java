@@ -138,6 +138,7 @@ public class MameDialog {
 	    sb.append(i + "\n");
 	}
 	text.append(sb.toString());
+	text.setSelection(0);
 	GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
 	gridData.heightHint = 5 * text.getLineHeight();
 	text.setLayoutData(gridData);

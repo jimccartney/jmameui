@@ -153,6 +153,7 @@ public class PreferencesShell {
 	Gcon = j.getgCon();
 	jMame = j;
 	shell.setLayout(new GridLayout(1, false));
+	shell.setText("JMameUI - Preferences");
 	initUI();
 
 	popOptions();

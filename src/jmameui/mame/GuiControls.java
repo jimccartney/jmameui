@@ -129,7 +129,7 @@ public class GuiControls {
 				tmp.renameTo(nMame);
 
 				mameExecutables.add(new MameExecutable(nMame.getPath(),
-						version, nMame.getPath(), false));
+						version, romPath, false));
 			}
 
 		} catch (IOException e) {
@@ -460,7 +460,7 @@ public class GuiControls {
 					p.getInputStream()));
 
 			String j = br.readLine();
-			System.out.println(j);
+			
 			br.close();
 			if (j != null)
 				out = j.split(" ")[1].split(" ")[0];
@@ -676,6 +676,6 @@ public class GuiControls {
 	}
 
 	public static String getJMameUIVersion() {
-		return "0.2.2";
+		return "0.2.3";
 	}
 }

@@ -62,38 +62,19 @@ public class JMameTableTab {
 		gCon = j.getgCon();
 		jMame = j;
 
-		initUI();
+		initUI(j);
 
 	}
 
-	private void initUI() {
+	private void initUI(SWTJMameUI j) {
 		mainGroup.setLayout(new GridLayout(3, false));
 
 		visLab = new Label(mainGroup, SWT.NONE);
 		visLab.setText("Visible");
 		visLab.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
-
-		subGroup = new Group(mainGroup, SWT.NATIVE);
-		subGroup.setLayout(new GridLayout(1, true));
-		subGroup.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, true,
-				1, 2));
-
-		Label fillLab = new Label(subGroup, SWT.NONE);
-		fillLab.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, true));
-
-		leftBtn = new Button(subGroup, SWT.PUSH);
-		leftBtn.setText("<-");
-		leftBtn.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
-		leftBtn.addSelectionListener(leftBtnAdapter);
-
-		rightBtn = new Button(subGroup, SWT.PUSH);
-		rightBtn.setText("->");
-		rightBtn.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
-				false));
-		rightBtn.addSelectionListener(rightBtnAdapter);
-
-		fillLab = new Label(subGroup, SWT.NONE);
-		fillLab.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, true));
+		
+		Label fillLab = new Label(mainGroup, SWT.NONE);
+		fillLab.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
 
 		aviLab = new Label(mainGroup, SWT.NONE);
 		aviLab.setText("Available");
@@ -101,6 +82,28 @@ public class JMameTableTab {
 
 		visList = new List(mainGroup, SWT.MULTI);
 		visList.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+		
+		subGroup = new Group(mainGroup, SWT.NATIVE);
+		subGroup.setLayout(new GridLayout(1, true));
+		subGroup.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, true,
+				1, 1));
+
+		fillLab = new Label(subGroup, SWT.NONE);
+		fillLab.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, true));
+
+		leftBtn = new Button(subGroup, SWT.PUSH);
+		leftBtn.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
+		leftBtn.addSelectionListener(leftBtnAdapter);
+		leftBtn.setImage(j.loadImage("arrow-left.png"));
+
+		rightBtn = new Button(subGroup, SWT.PUSH);
+		rightBtn.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
+				false));
+		rightBtn.addSelectionListener(rightBtnAdapter);
+		rightBtn.setImage(j.loadImage("arrow-right.png"));
+
+		fillLab = new Label(subGroup, SWT.NONE);
+		fillLab.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, true));
 
 		aviList = new List(mainGroup, SWT.MULTI);
 		aviList.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
