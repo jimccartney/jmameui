@@ -94,13 +94,13 @@ public class JMameTableTab {
 		leftBtn = new Button(subGroup, SWT.PUSH);
 		leftBtn.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
 		leftBtn.addSelectionListener(leftBtnAdapter);
-		leftBtn.setImage(j.loadImage("arrow-left.png"));
+		leftBtn.setImage(SWTJMameUI.loadImage("arrow-left.png"));
 
 		rightBtn = new Button(subGroup, SWT.PUSH);
 		rightBtn.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
 				false));
 		rightBtn.addSelectionListener(rightBtnAdapter);
-		rightBtn.setImage(j.loadImage("arrow-right.png"));
+		rightBtn.setImage(SWTJMameUI.loadImage("arrow-right.png"));
 
 		fillLab = new Label(subGroup, SWT.NONE);
 		fillLab.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, true));

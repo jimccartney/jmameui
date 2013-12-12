@@ -674,8 +674,4 @@ public class GuiControls {
 	public int getGoodRomsetCount() {
 		return romSet.size();
 	}
-
-	public static String getJMameUIVersion() {
-		return "0.2.3";
-	}
 }

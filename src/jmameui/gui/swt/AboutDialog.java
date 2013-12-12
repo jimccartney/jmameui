@@ -3,7 +3,6 @@ package jmameui.gui.swt;
 import java.util.ArrayList;
 
 import jmameui.mame.FileIO;
-import jmameui.mame.GuiControls;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -42,7 +41,7 @@ public class AboutDialog {
 	    fontData[i].setHeight(24);
 	}
 	proNameLab.setFont(new Font(Display.getDefault(), fontData));
-	proNameLab.setText("JMameUI");
+	proNameLab.setText(Display.getAppName());
 	proNameLab.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
 		false, 2, 1));
 
@@ -52,7 +51,7 @@ public class AboutDialog {
 		false, 2, 1));
 
 	proVerLab = new Label(shell, SWT.None);
-	proVerLab.setText(GuiControls.getJMameUIVersion());
+	proVerLab.setText(Display.getAppVersion());
 	proVerLab.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
 		false, 2, 1));
 
@@ -68,7 +67,7 @@ public class AboutDialog {
 	licBtn.addSelectionListener(new SelectionAdapter() {
 	    public void widgetSelected(SelectionEvent arg0) {
 		ArrayList<String> lin = FileIO.readInputStream(getClass()
-			.getClassLoader().getResourceAsStream("LICENSE"));
+			.getClassLoader().getResourceAsStream("jmameui/LICENSE"));
 
 		new MameDialog(shell, lin, MameDialog.TEXTAREA);
 	    }

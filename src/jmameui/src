@@ -1,0 +1,4954 @@
+/*
+ * This file is part of JMameUI.
+ * 
+ * JMameUI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JMameUI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package jmameui.gui.swt;
+
+import java.util.ArrayList;
+
+import jmameui.mame.MameRom;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Cursor;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Menu;
+import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.widgets.TabItem;
+import org.eclipse.swt.widgets.Text;
+import org.eclipse.swt.widgets.ToolBar;
+
+public class JMameUI extends SWTJMameUI {
+	public static void main(String[] args) {
+		Display.setAppName("JMameUI");
+		Display.setAppVersion("0.2.4");
+		Display display = new Display();
+		new JMameUI(display);
+		display.dispose();
+	}
+
+	public JMameUI(Display display) {
+		shell = new Shell(display);
+		shell.setText("JMameUI");
+		shell.setImage(loadImage("windowicon.png"));
+		initUI();
+		shell.open();
+		Boolean MameFound = gCon.start();
+
+		if (MameFound != null && MameFound) {
+			String ver = gCon.getSystemMame().getVersion().split(" ")[0];
+			String preVer = gCon.readSettingsFile("system_mame_version");
+			if (!ver.equals(preVer)) {
+				gCon.changeSettingsFile("system_mame_version", ver);
+				new MameDialog(
+						shell,
+						"System Mame version changed\nPlease rebuild the database.",
+						MameDialog.WARNING);
+			}
+			buildDB(false);
+		} else if (MameFound != null) {
+			new MameNotFound(this);
+		}
+		
+		
+		while (!shell.isDisposed()) {
+			if (!display.readAndDispatch()) {
+				display.sleep();
+			}
+		}
+	}
+
+	public void initUI() {
+		initMenuAndToolbar();
+
+		shell.setLayout(new GridLayout(2, false));
+
+		tabs = new TabFolder(shell, SWT.BORDER);
+		tabs.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 2, 1));
+		tabs.addSelectionListener(tabChangeListener);
+		TabItem goodTab = new TabItem(tabs, SWT.NONE);
+		goodTab.setText("Good romsets");
+		TabItem favTab = new TabItem(tabs, SWT.NONE);
+		favTab.setText("Favourites");
+		TabItem searchTab = new TabItem(tabs, SWT.NONE);
+		searchTab.setText("Search");
+
+		goodTable = createTable(goodTab);
+		favTable = createTable(favTab);
+		searchTable = createTable(searchTab);
+
+		Menu tableMenu = new Menu(goodTable);
+		addToFav = createMenuItem(tableMenu, "Add rom to favourites",
+				"emblem-favorite.png", addFavListener);
+		goodTable.setMenu(tableMenu);
+		searchTable.setMenu(tableMenu);
+		favTable.setMenu(tableMenu);
+
+		searchField = new Text(shell, SWT.BORDER);
+		searchField.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
+				false, 1, 1));
+		searchField.addModifyListener(searchListener);
+
+		launchButton = new Button(shell, SWT.PUSH);
+		launchButton.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false,
+				false, 1, 1));
+		launchButton.setText("Launch");
+		launchButton.addSelectionListener(launchBtnListener);
+
+		statusLabel = new Label(shell, SWT.NONE);
+		statusLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
+				false, 2, 1));
+		shell.pack();
+		shell.setSize(1200, 600);
+	}
+
+	public void initMenuAndToolbar() {
+		Menu menuBar = new Menu(shell, SWT.BAR);
+		shell.setMenuBar(menuBar);
+		ToolBar toolBar = new ToolBar(shell, SWT.BAR);
+		toolBar.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false,
+				2, 1));
+
+		Menu fileMenu = createMenu("&File");
+		Menu romMenu = createMenu("&Rom");
+		Menu viewMenu = createMenu("&View");
+		Menu helpMenu = createMenu("&Help");
+
+		createMenuItem(fileMenu, "View Logs", "configure.png", viewLogatapet);
+		addToFav = createMenuItem(romMenu, "Add rom to favourites",
+				"emblem-favorite.png", addFavListener);
+		createMenuItem(fileMenu, "&Exit", "application-exit.png", exitAdapter);
+		MenuItem addRomAct = createMenuItem(romMenu, "&Add romset",
+				"list-add.png", addRomAdapter);
+		MenuItem buildDBAct = createMenuItem(romMenu, "&Build rom database",
+				"view-refresh.png", rebuildBtnListener);
+		MenuItem prefAct = createMenuItem(viewMenu, "&Preferences",
+				"configure.png", viewPrefListener);
+		createMenuItem(viewMenu, "&Bad romset information",
+				"dialog-warning.png", viewUnavailRomsets);
+		createMenuItem(helpMenu, "About JMameUI", "help-about.png",
+				aboutDialogAdapter);
+		createMenuItem(helpMenu, "Help", "help-contents.png", helpAdapter);
+
+		addMenuItemToToolBar(addToFav, toolBar, addFavListener);
+		addMenuItemToToolBar(buildDBAct, toolBar, rebuildBtnListener);
+		addMenuItemToToolBar(addRomAct, toolBar, addRomAdapter);
+		addMenuItemToToolBar(prefAct, toolBar, viewPrefListener);
+		toolBar.pack();
+	}
+
+	public void buildDB(final boolean forceRebuild) {
+		shell.setCursor(new Cursor(Display.getDefault(), SWT.CURSOR_WAIT));
+		statusLabel.setText("Building database...");
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				gCon.buildDB(forceRebuild);
+				Display.getDefault().asyncExec(new Runnable() {
+					public void run() {
+						favTable.removeAll();
+						goodTable.removeAll();
+						roms = new ArrayList<MameRom>(gCon.getRomSet());
+						for (MameRom m : roms) {
+							addToTable(goodTable, m);
+							if (m.isFavourite()) {
+								addToTable(favTable, m);
+							}
+						}
+						packTable(goodTable, favTable);
+						statusLabel.setText("Ready - available romsets = "
+								+ gCon.getGoodRomsetCount());
+						shell.setCursor(new Cursor(Display.getDefault(),
+								SWT.CURSOR_ARROW));
+					}
+				});
+
+			}
+		}).start();
+	}
+
+	public void viewBadRomsets() {
+		new MameDialog(shell, gCon.getUnavailableRomText(), MameDialog.TEXTAREA);
+	}
+}
+/*
+ * This file is part of JMameUI.
+ * 
+ * JMameUI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JMameUI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package jmameui.gui.swt;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+
+import jmameui.mame.FileIO;
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.ModifyEvent;
+import org.eclipse.swt.events.ModifyListener;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.List;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Text;
+
+public class MameAddRom {
+
+    private Label filesLabel;
+    private Label romNameLabel;
+    private Label warningLabel;
+    private Label romPathLabel;
+    private Combo romPathCombo;
+    private Button browseBtn;
+    private Button closeBtn;
+    private Button okBtn;
+    private Button clearBtn;
+    private List filesList;
+    private Text romNameText;
+    private Shell shell;
+    private GuiControls gCon;
+    private ArrayList<File> romFiles = new ArrayList<File>();
+    private boolean romCopied;
+
+    private SelectionAdapter browseAdapter = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent arg0) {
+	    FileDialog dialog = new FileDialog(shell, SWT.OPEN);
+	    dialog.setText("Choose romset zip");
+	    dialog.setFilterPath(System.getProperty("user.home"));
+	    dialog.setFilterNames(new String[] { "Zip files", "All files (*)" });
+	    dialog.setFilterExtensions(new String[] { "*.zip", "*" });
+	    String filePath = dialog.open();
+	    if (filePath != null) {
+		File file = new File(filePath);
+		if (filePath.contains(".zip")) {
+		    filesList.add(filePath);
+		    romNameText.setText(file.getName().split(".zip")[0]);
+		    romFiles.add(file);
+		}
+	    }
+	};
+    };
+
+    private SelectionAdapter clearAdapter = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent arg0) {
+	    filesList.removeAll();
+	    romNameText.setText("");
+	    romFiles.clear();
+	};
+    };
+
+    private ModifyListener romTextListener = new ModifyListener() {
+	public void modifyText(ModifyEvent arg0) {
+	    if (!romNameText.getText().equals("")) {
+		if (gCon.getRom(romNameText.getText()) == null) {
+		    okBtn.setEnabled(true);
+		    warningLabel.setVisible(false);
+		} else {
+		    okBtn.setEnabled(false);
+		    warningLabel.setVisible(true);
+		}
+	    } else {
+		okBtn.setEnabled(false);
+	    }
+	}
+    };
+
+    private SelectionAdapter okBtnAdapter = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent arg0) {
+	    romCopied = false;
+	    final String path = romPathCombo.getItem(romPathCombo
+		    .getSelectionIndex());
+	    final String name = romNameText.getText();
+	    Thread t = new Thread(new Runnable() {
+		public void run() {
+		    try {
+			for (File i : romFiles) {
+			    FileIO.unZip(i, path + "/" + name);
+			}
+			romCopied = true;
+		    } catch (IOException e) {
+			FileIO.writeToLogFile(e);
+		    }
+		}
+	    });
+	    
+	    t.start();
+	    try {
+		t.join();
+	    } catch (InterruptedException e) {
+		FileIO.writeToLogFile(e);
+	    }
+
+	    if (romCopied) {
+		new MameDialog(shell, "Romset copy sucessful",
+			MameDialog.INFORMATION);
+	    }else{
+		new MameDialog(shell, "Romset copy failed",
+			MameDialog.ERROR);
+	    }
+	}
+    };
+
+    private SelectionAdapter closeBtnAdapter = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent arg0) {
+	    shell.dispose();
+	}
+    };
+
+    public MameAddRom(Shell owner, GuiControls gCon) {
+	shell = new Shell(owner, SWT.RESIZE);
+	shell.setLayout(new GridLayout(2, false));
+	shell.setImage(owner.getImage());
+	shell.setText("JMameUI");
+	this.gCon = gCon;
+	initUI();
+
+	shell.setSize(400, 300);
+	shell.open();
+    }
+
+    private void initUI() {
+	filesLabel = new Label(shell, SWT.NONE);
+	filesLabel.setText("Select romset zip");
+	filesLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false,
+		false, 2, 1));
+
+	filesList = new List(shell, SWT.MULTI | SWT.BORDER | SWT.WRAP
+		| SWT.V_SCROLL);
+	filesList.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1,
+		2));
+
+	browseBtn = new Button(shell, SWT.PUSH);
+	browseBtn.setText("Browse");
+	browseBtn.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
+	browseBtn.addSelectionListener(browseAdapter);
+
+	clearBtn = new Button(shell, SWT.PUSH);
+	clearBtn.setText("Clear");
+	clearBtn.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
+	clearBtn.addSelectionListener(clearAdapter);
+
+	romNameLabel = new Label(shell, SWT.NONE);
+	romNameLabel.setText("Romset name");
+	romNameLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false,
+		false, 2, 1));
+
+	romNameText = new Text(shell, SWT.BORDER | SWT.WRAP);
+	romNameText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
+		false, 2, 1));
+	romNameText.addModifyListener(romTextListener);
+
+	warningLabel = new Label(shell, SWT.NONE);
+	warningLabel.setText("Romset already exists");
+	warningLabel.setVisible(false);
+	warningLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false,
+		false, 2, 1));
+
+	romPathLabel = new Label(shell, SWT.NONE);
+	romPathLabel.setText("Romset Path");
+	romPathLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false,
+		false, 2, 1));
+
+	romPathCombo = new Combo(shell, SWT.READ_ONLY);
+	romPathCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
+		false, 2, 1));
+	ArrayList<String> lines = new ArrayList<String>();
+	for (MameExecutable i : gCon.getMameExecutables()) {
+	    for (String j : i.getRomPath()) {
+		if (!lines.contains(j)) {
+		    lines.add(j);
+		}
+	    }
+	}
+	String[] items = new String[lines.size()];
+	for (int i = 0; i < items.length; i++) {
+	    items[i] = lines.get(i);
+	}
+	romPathCombo.setItems(items);
+	romPathCombo.select(0);
+
+	closeBtn = new Button(shell, SWT.PUSH);
+	closeBtn.setText("Close");
+	closeBtn.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+	closeBtn.addSelectionListener(closeBtnAdapter);
+
+	okBtn = new Button(shell, SWT.PUSH);
+	okBtn.setText("Copy");
+	okBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+	okBtn.setEnabled(false);
+	okBtn.addSelectionListener(okBtnAdapter);
+    }
+}
+/**
+ * This file is part of JMameUI.
+ * 
+ * JMameUI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JMameUI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ */
+package jmameui.gui.swt;
+
+import java.io.File;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Date;
+
+import jmameui.mame.FileIO;
+import jmameui.mame.GuiControls;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.MouseAdapter;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.List;
+import org.eclipse.swt.widgets.Shell;
+
+public class ViewLogs {
+
+    private GuiControls gCon;
+    private Shell shell;
+    private List logList;
+    private SimpleDateFormat df = new SimpleDateFormat("dd-MM-yy");
+
+    private Comparator<String> dateComp = new Comparator<String>() {
+	public int compare(String o1, String o2) {
+	    Date d1 = parseDate(o1);
+	    Date d2 = parseDate(o2);
+	    if (d1 != null && d2 != null) {
+		return d1.compareTo(d2);
+	    }
+	    return 0;
+	}
+    };
+
+    public ViewLogs(Shell owner, GuiControls g) {
+	shell = new Shell(owner, SWT.RESIZE);
+	shell.setLayout(new GridLayout(4, false));
+	this.gCon = g;
+
+	initUI();
+
+	shell.setText("JMameUI");
+	shell.pack();
+	shell.open();
+    }
+
+    private void initUI() {
+	File[] files = gCon.getLogDir().listFiles();
+	String[] fileNames = new String[files.length];
+
+	for (int i = 0; i < files.length; ++i) {
+	    fileNames[i] = files[i].getName().replace("log ", "");
+	}
+
+	Arrays.sort(fileNames, dateComp);
+
+	logList = new List(shell, SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL);
+	logList.setItems(fileNames);
+	logList.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 4, 1));
+	logList.addMouseListener(new MouseAdapter() {
+	    @Override
+	    public void mouseDoubleClick(MouseEvent arg0) {
+		openFile();
+	    }
+	});
+
+	Button closeBtn = new Button(shell, SWT.PUSH);
+	closeBtn.setText("Close");
+	closeBtn.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+	closeBtn.addSelectionListener(new SelectionAdapter() {
+	    @Override
+	    public void widgetSelected(SelectionEvent arg0) {
+		shell.dispose();
+	    }
+	});
+
+	Button delBtn = new Button(shell, SWT.PUSH);
+	delBtn.setText("Delete");
+	delBtn.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
+	delBtn.addSelectionListener(new SelectionAdapter() {
+	    public void widgetSelected(SelectionEvent arg0) {
+		deleteLog(false);
+	    }
+	});
+
+	Button DelAllBtn = new Button(shell, SWT.PUSH);
+	DelAllBtn.setText("Delete All");
+	DelAllBtn.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
+		false));
+	DelAllBtn.addSelectionListener(new SelectionAdapter() {
+	    public void widgetSelected(SelectionEvent arg0) {
+		deleteLog(true);
+	    }
+	});
+
+	Button viewBtn = new Button(shell, SWT.PUSH);
+	viewBtn.setText("View Log");
+	viewBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+	viewBtn.addSelectionListener(new SelectionAdapter() {
+	    public void widgetSelected(SelectionEvent arg0) {
+		openFile();
+	    }
+	});
+    }
+
+    private void openFile() {
+	if (logList.getSelectionIndex() >= 0) {
+	    File logFile = new File(gCon.getLogDir(), "log "
+		    + logList.getSelection()[0]);
+
+	    if (logFile.exists()) {
+		new MameDialog(shell, FileIO.readFile(logFile),
+			MameDialog.TEXTAREA);
+	    } else {
+		new MameDialog(shell, logFile.getName() + " not found",
+			MameDialog.WARNING);
+	    }
+	}
+    }
+
+    private void deleteLog(boolean all) {
+	if (all) {
+	    for (File i : gCon.getLogDir().listFiles()) {
+		i.delete();
+	    }
+	    logList.removeAll();
+	} else if (logList.getSelectionIndex() >= 0) {
+	    new File(gCon.getLogDir(), "log " + logList.getSelection()[0])
+		    .delete();
+	    logList.remove(logList.getSelection()[0]);
+	}
+    }
+
+    private Date parseDate(String o1) {
+	try {
+	    return df.parse(o1);
+	} catch (ParseException e) {
+	    FileIO.writeToLogFile(e);
+	}
+	return null;
+    }
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+
+public class ScreenOption extends IniOption {
+
+    public ScreenOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner,g,me);
+    }
+    
+    public ScreenOption() {
+    }
+    
+    @Override
+    public void initUI() {
+	CreateDoubleSpinner("Brightness", "brightness", 1);
+	CreateDoubleSpinner("Contrast", "contrast", 1);
+	CreateDoubleSpinner("Gamma", "gamma", 1);
+	CreateDoubleSpinner("Pause Brightness", "pause_brightness", 1);
+	
+	createMamePathComp("Effect", "effect", LOAD_DIALOG);
+    }
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class RotationOption extends IniOption {
+
+    public RotationOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+
+    public RotationOption() {
+    }
+
+    public void initUI() {
+	createCheckBox("Rotate", "rotate");
+	createCheckBox("Rotate Clockwise", "ror");
+	createCheckBox("Rotate Anticlockwise", "rol");
+	createCheckBox("Auto Rotate Clockwise", "autoror");
+	createCheckBox("Auto Rotate Anticlockwise", "autorol");
+	createCheckBox("Flip X", "flipx");
+	createCheckBox("Flip Y", "flipy");
+
+	getGroup().pack(true);
+    }
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class PerWindowVideoOption extends IniOption {
+
+    public PerWindowVideoOption() {
+    }
+
+    public PerWindowVideoOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+    
+    @Override
+    public void initUI() {
+	createTextBox("Screen", "screen");
+	createTextBox("Aspect", "aspect");
+	createTextBox("Resolution", "resolution");
+	createTextBox("View", "view");
+	createTextBox("Screen 1", "screen1");
+	createTextBox("Aspect 1", "aspect1");
+	createTextBox("Resolution 1", "resolution1");
+	createTextBox("View 1", "view1");
+	createTextBox("Screen 2", "screen2");
+	createTextBox("Aspect 2", "aspect2");
+	createTextBox("Resolution 2", "resolution2");
+	createTextBox("View 2", "view2");
+	createTextBox("Screen 3", "screen3");
+	createTextBox("Aspect 3", "aspect3");
+	createTextBox("Resolution 3", "resolution3");
+	createTextBox("View 3", "view3");
+    }
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class OpenGLOption extends IniOption {
+
+    public OpenGLOption() {
+    }
+
+    public OpenGLOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+
+    @Override
+    public void initUI() {
+	createCheckBox("Filter", "filter");
+	createCheckBox("Gl Forcepow2texture", "gl_forcepow2texture");
+	createCheckBox("Gl No texture Rect", "gl_notexturerect");
+	createCheckBox("Gl Vbo", "gl_vbo");
+	createCheckBox("Gl Pbo", "gl_pbo");
+	createCheckBox("Gl Glsl", "gl_glsl");
+	createCheckBox("Gl Glsl Filter", "gl_glsl_filter");
+	createCheckBox("Gl Glsl Vid Attr", "gl_glsl_vid_attr");
+
+	createIntSpinner("Prescale", "prescale", 0, 10);
+
+	for (int i = 0; i < 10; i++) {
+	    createTextBox("Glsl Shader Mame " + i, "glsl_shader_mame" + i);
+	    createTextBox("Glsl Shader Screen " + i, "glsl_shader_screen" + i);
+	}
+    }
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class StatePlaybackOption extends IniOption {
+
+    public StatePlaybackOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+
+    public StatePlaybackOption() {
+    }
+
+    public void initUI() {
+	
+	createCheckBox("Auto Save", "autosave");
+	createCheckBox("Burn In", "burnin");
+	createMamePathComp("State", "state", LOAD_DIALOG);
+	createMamePathComp("Play Back", "playback", LOAD_DIALOG);
+	createMamePathComp("Mng Write", "mngwrite", SAVE_DIALOG);
+	createMamePathComp("Avi Write", "aviwrite", SAVE_DIALOG);
+	createMamePathComp("Wav Write", "wavwrite", SAVE_DIALOG);
+	createTextBox("Snap Name", "snapname");
+	createTextBox("Snap Size", "snapsize");
+	createTextBox("Snap View", "snapview");
+	createTextBox("State Name", "statename");
+	
+	getGroup().pack(true);
+    }
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class MiscOption extends IniOption {
+
+    public MiscOption() {
+    }
+
+    public MiscOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+    
+    @Override
+    public void initUI() {
+	createCheckBox("Drc", "drc");
+	createCheckBox("Drc Use C", "drc_use_c");
+	createCheckBox("Cheat", "cheat");
+	createCheckBox("Skip Gameinfo", "skip_gameinfo");
+	createCheckBox("Confirm Quit", "confirm_quit");
+	createCheckBox("Ui Mouse", "ui_mouse");
+	
+	createTextBox("Bios", "bios");
+	createTextBox("Ui Font", "uifont");
+	createTextBox("Ramsize", "ramsize");
+	
+	createTextBox("Autoboot Command", "autoboot_command");
+	createIntSpinner("Autoboot Delay", "autoboot_delay", 0, 60000);
+	createMamePathComp("Autoboot Script", "autoboot_script", LOAD_DIALOG);
+	
+	createTextBox("Http", "http");
+	createTextBox("Http Port", "http_port");
+	createTextBox("Http Path", "http_path");
+    }
+
+}
+package jmameui.gui.swt.preferences.options;
+
+import org.eclipse.swt.widgets.Group;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+public class VectorOption extends IniOption {
+
+    public VectorOption() {
+    }
+
+    public VectorOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+    
+    @Override
+    public void initUI() {
+	createCheckBox("Antialias", "antialias");
+	
+	CreateDoubleSpinner("Beam", "beam", 1);
+	
+	createIntSpinner("Flicker", "flicker",0, 10);
+    }
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class CorePerformanceOption extends IniOption {
+
+    public CorePerformanceOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+
+    public CorePerformanceOption() {
+    }
+
+    @Override
+    public void initUI() {
+	createCheckBox("Auto Frame Skip", "autoframeskip");
+	createCheckBox("Throttle", "throttle");
+	createCheckBox("Sleep", "sleep");
+	createCheckBox("Refresh Speed", "refreshspeed");
+	
+	createIntSpinner("Frame Skip", "frameskip",0, 10);
+	createIntSpinner("Seconds To Run", "seconds_to_run",0, 60000);
+	
+	CreateDoubleSpinner("Speed", "speed",20);
+    }
+
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class SearchPathOption extends IniOption {
+    public SearchPathOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+
+    public SearchPathOption() {
+    }
+
+    public void initUI() {
+	createMamePathComp("Rom Path", "rompath", DIRECTORY_DIALOG);
+	createMamePathComp("Hash Path", "hashpath", DIRECTORY_DIALOG);
+	createMamePathComp("Sample Path", "samplepath", DIRECTORY_DIALOG);
+	createMamePathComp("Art Path", "artpath", DIRECTORY_DIALOG);
+	createMamePathComp("Ctrlr Path", "ctrlrpath", DIRECTORY_DIALOG);
+	createMamePathComp("Ini Path", "inipath", DIRECTORY_DIALOG);
+	createMamePathComp("Font Path", "fontpath", DIRECTORY_DIALOG);
+	createMamePathComp("Cheat Path", "cheatpath", DIRECTORY_DIALOG);
+	createMamePathComp("Crosshair Path", "crosshairpath", DIRECTORY_DIALOG);
+	getGroup().pack(true);
+    }
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class SDLJoyStickOption extends IniOption {
+
+    public SDLJoyStickOption() {
+    }
+
+    public SDLJoyStickOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+    
+    @Override
+    public void initUI() {
+	createTextBox("Joy Idx1", "joy_idx1");
+	createTextBox("Joy Idx2", "joy_idx2");
+	createTextBox("Joy Idx3", "joy_idx3");
+	createTextBox("Joy Idx4", "joy_idx4");
+	createTextBox("Joy Idx5", "joy_idx5");
+	createTextBox("Joy Idx6", "joy_idx6");
+	createTextBox("Joy Idx7", "joy_idx7");
+	createTextBox("Joy Idx 8", "joy_idx8");
+	
+	createCheckBox("Six Axis", "sixaxis");
+    }
+}
+package jmameui.gui.swt.preferences.options;
+
+import java.util.HashMap;
+
+import jmameui.gui.swt.SWTJMameUI;
+import jmameui.mame.GuiControls;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.TabFolder;
+
+public class JMameSearchTab {
+
+	private Group group;
+	private GuiControls gCon;
+	private SelectionAdapter btnAdapter = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent e) {
+			Button btn = (Button) e.widget;
+			gCon.changeSettingsFile(
+					btn.getText().toLowerCase().replaceAll(" ", "_")
+							+ "_search", "" + btn.getSelection());
+		}
+	};
+
+	public JMameSearchTab(TabFolder owner, SWTJMameUI jmui) {
+		group = new Group(owner, SWT.BORDER);
+		group.setLayout(new GridLayout(1, false));
+		gCon = jmui.getgCon();
+		initUI();
+	}
+
+	private void initUI() {
+		HashMap<String, String> ops = gCon.getSearchOptions();
+		for (String i : gCon.getTableColumnsNames()) {
+			Button btn = new Button(group, SWT.CHECK);
+			btn.setText(i);
+			btn.setSelection(Boolean.parseBoolean(ops.get(i.toLowerCase()
+					.replaceAll(" ", "_") + "_search")));
+			btn.setToolTipText("Include column " + i + " in search results");
+			btn.addSelectionListener(btnAdapter);
+			btn.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+		}
+	}
+
+	public Control getGroup() {
+		return group;
+	}
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class SoundOption extends IniOption {
+
+    public SoundOption() {
+    }
+
+    public SoundOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+    
+    @Override
+    public void initUI() {
+	createCheckBox("Sound", "sound");
+	createCheckBox("Samples ", "samples");
+	
+	createTextBox("Sample Rate", "samplerate");
+	
+	createIntSpinner("Volume", "volume", -32, 0);
+	createIntSpinner("Audio Latency", "audio_latency", 0, 5);
+    }
+
+}
+package jmameui.gui.swt.preferences.options;
+
+import java.util.HashMap;
+
+import jmameui.gui.swt.SWTJMameUI;
+import jmameui.mame.GuiControls;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.List;
+import org.eclipse.swt.widgets.TabFolder;
+
+public class JMameTableTab {
+
+	private Group mainGroup;
+	private Group subGroup;
+	private GuiControls gCon;
+	private List visList;
+	private List aviList;
+	private Label visLab;
+	private Label aviLab;
+	private Button leftBtn;
+	private Button rightBtn;
+	private SWTJMameUI jMame;
+
+	private SelectionAdapter leftBtnAdapter = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent e) {
+			if (aviList.getSelectionIndex() >= 0) {
+				String item = aviList.getItem(aviList.getSelectionIndex());
+				aviList.remove(item);
+				visList.add(item);
+				gCon.changeSettingsFile(item.toLowerCase().replace(" ", "_")
+						+ "_column_visible", "true");
+				gCon.refreshMainSettings();
+				jMame.packAllTables();
+			}
+		};
+	};
+
+	private SelectionAdapter rightBtnAdapter = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent e) {
+			if (visList.getSelectionIndex() >= 0) {
+				String item = visList.getItem(visList.getSelectionIndex());
+				visList.remove(item);
+				aviList.add(item);
+				gCon.changeSettingsFile(item.toLowerCase().replace(" ", "_")
+						+ "_column_visible", "false");
+				gCon.refreshMainSettings();
+				jMame.packAllTables();
+			}
+		};
+	};
+
+	public JMameTableTab(TabFolder owner, SWTJMameUI j) {
+		mainGroup = new Group(owner, SWT.BORDER);
+		gCon = j.getgCon();
+		jMame = j;
+
+		initUI(j);
+
+	}
+
+	private void initUI(SWTJMameUI j) {
+		mainGroup.setLayout(new GridLayout(3, false));
+
+		visLab = new Label(mainGroup, SWT.NONE);
+		visLab.setText("Visible");
+		visLab.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
+		
+		Label fillLab = new Label(mainGroup, SWT.NONE);
+		fillLab.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
+
+		aviLab = new Label(mainGroup, SWT.NONE);
+		aviLab.setText("Available");
+		aviLab.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
+
+		visList = new List(mainGroup, SWT.MULTI);
+		visList.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+		
+		subGroup = new Group(mainGroup, SWT.NATIVE);
+		subGroup.setLayout(new GridLayout(1, true));
+		subGroup.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, true,
+				1, 1));
+
+		fillLab = new Label(subGroup, SWT.NONE);
+		fillLab.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, true));
+
+		leftBtn = new Button(subGroup, SWT.PUSH);
+		leftBtn.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
+		leftBtn.addSelectionListener(leftBtnAdapter);
+		leftBtn.setImage(j.loadImage("arrow-left.png"));
+
+		rightBtn = new Button(subGroup, SWT.PUSH);
+		rightBtn.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
+				false));
+		rightBtn.addSelectionListener(rightBtnAdapter);
+		rightBtn.setImage(j.loadImage("arrow-right.png"));
+
+		fillLab = new Label(subGroup, SWT.NONE);
+		fillLab.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, true));
+
+		aviList = new List(mainGroup, SWT.MULTI);
+		aviList.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+		popLists();
+	}
+
+	public Group getGroup() {
+		return mainGroup;
+	}
+
+	private void popLists() {
+		String[] colName = gCon.getTableColumnsNames();
+		HashMap<String, String> ops = gCon.getTableOptions();
+		for (String i : ops.keySet()) {
+			if (Boolean.parseBoolean(ops.get(i))) {
+				visList.add(getArrayItem(colName, i));
+			} else {
+				aviList.add(getArrayItem(colName, i));
+			}
+		}
+	}
+
+	private String getArrayItem(String[] arr, String line) {
+		for (String i : arr) {
+			if ((i.toLowerCase().replace(" ", "_") + "_column_visible")
+					.equals(line)) {
+				return i;
+			}
+		}
+		return "";
+	}
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class SDLOption extends IniOption {
+
+    public SDLOption() {
+    }
+
+    public SDLOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+    
+    @Override
+    public void initUI() {
+	createMameCombo("Video Driver", "videodriver", new String[]{"auto","x11","directfb"});
+	createMameCombo("Audio Driver", "audiodriver", new String[]{"auto","alsa","arts"});
+	
+	createMamePathComp("Gl Lib", "gl_lib", LOAD_DIALOG);
+    }
+
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class OutputDirOption extends IniOption {
+    public OutputDirOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+
+    public OutputDirOption() {
+    }
+
+    public void initUI() {
+	createMamePathComp("Cfg Directory", "cfg_directory", DIRECTORY_DIALOG);
+	createMamePathComp("Nvram Directory", "nvram_directory",
+		DIRECTORY_DIALOG);
+	createMamePathComp("Memcard Directory", "memcard_directory",
+		DIRECTORY_DIALOG);
+	createMamePathComp("Input Directory", "input_directory",
+		DIRECTORY_DIALOG);
+	createMamePathComp("State Directory", "state_directory",
+		DIRECTORY_DIALOG);
+	createMamePathComp("Snapshot Directory", "snapshot_directory",
+		DIRECTORY_DIALOG);
+	createMamePathComp("Diff Directory", "diff_directory", DIRECTORY_DIALOG);
+	createMamePathComp("Comment Directory", "comment_directory",
+		DIRECTORY_DIALOG);
+	getGroup().pack(true);
+    }
+}
+/*
+ * This file is part of JMameUI.
+ * 
+ * JMameUI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JMameUI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package jmameui.gui.swt.preferences.options;
+
+import java.io.File;
+import java.util.ArrayList;
+
+import jmameui.gui.swt.preferences.widgets.MameCombo;
+import jmameui.gui.swt.preferences.widgets.MamePathComp;
+import jmameui.gui.swt.preferences.widgets.MameSpinner;
+import jmameui.gui.swt.preferences.widgets.MameTextComp;
+import jmameui.mame.FileIO;
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.ModifyEvent;
+import org.eclipse.swt.events.ModifyListener;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.DirectoryDialog;
+import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Spinner;
+import org.eclipse.swt.widgets.Text;
+
+public class IniOption {
+
+    private GuiControls gCon;
+    private MameExecutable mExec;
+    private ArrayList<String> iniFile;
+    private ArrayList<String> mameUsage;
+    private Group group;
+    public static final int LOAD_DIALOG = 0;
+    public static final int DIRECTORY_DIALOG = 1;
+    public static final int SAVE_DIALOG = 2;
+
+    public IniOption() {
+    }
+
+    public IniOption(Group owner, GuiControls g, MameExecutable me) {
+	group = owner;
+	mExec = me;
+	gCon = g;
+	iniFile = FileIO.readFile(me.getIniFile());
+	mameUsage = FileIO.getProcessOutput(me.getPath() + " -su", false);
+	initUI();
+    }
+
+    public void initUI() {
+    }
+
+    private SelectionAdapter mameComboAdapter = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent arg0) {
+	    Combo combo = (Combo) arg0.widget;
+	    MameCombo mc = (MameCombo) combo.getParent();
+	    gCon.changeMameIniValue(iniFile, mc.getOption(),
+		    combo.getItem(combo.getSelectionIndex()));
+
+	    writeIni();
+	}
+    };
+
+    private SelectionAdapter checkBoxAdapter = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent arg0) {
+	    Button btn = (Button) arg0.widget;
+	    String option = btn.getText().replace(" ", "").toLowerCase();
+	    String newValue = "";
+
+	    if (btn.getSelection() == true) {
+		newValue = "1";
+	    } else {
+		newValue = "0";
+	    }
+
+	    gCon.changeMameIniValue(iniFile, option, newValue);
+	    writeIni();
+	}
+    };
+
+    private SelectionAdapter mameDirPathListener = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent e) {
+	    Button btn = (Button) e.widget;
+	    MamePathComp mpc = (MamePathComp) btn.getParent();
+	    Text txt = mpc.getText();
+	    DirectoryDialog dialog = new DirectoryDialog(group.getShell());
+	    dialog.setText("Select directory");
+	    dialog.setFilterPath(System.getProperty("user.home"));
+	    String newPath = dialog.open();
+	    if (newPath != null) {
+		if (txt.getTextChars()[txt.getCharCount() - 1] == ';') {
+		    txt.append(newPath);
+		} else {
+		    txt.setText(newPath);
+		}
+
+		gCon.changeMameIniValue(iniFile, mpc.getOption(), txt.getText()
+			.replace(System.getProperty("user.home"), "$HOME"));
+		writeIni();
+	    }
+	}
+    };
+
+    private SelectionAdapter mameSavePathListener = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent e) {
+	    Button btn = (Button) e.widget;
+	    MamePathComp mpc = (MamePathComp) btn.getParent();
+	    Text txt = mpc.getText();
+	    FileDialog dialog = new FileDialog(group.getShell(), SWT.SAVE);
+	    dialog.setText("Save file");
+	    dialog.setFilterPath(System.getProperty("user.home"));
+	    String newFile = dialog.open();
+	    if (newFile != null) {
+		txt.setText(newFile);
+
+		gCon.changeMameIniValue(iniFile, mpc.getOption(), txt.getText()
+			.replace(System.getProperty("user.home"), "$HOME"));
+		writeIni();
+	    }
+	}
+    };
+
+    private SelectionAdapter mameLoadPathListener = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent e) {
+	    Button btn = (Button) e.widget;
+	    MamePathComp mpc = (MamePathComp) btn.getParent();
+	    Text txt = mpc.getText();
+	    FileDialog dialog = new FileDialog(group.getShell(), SWT.OPEN);
+	    dialog.setText("Load file");
+	    dialog.setFilterPath(System.getProperty("user.home"));
+	    String newFile = dialog.open();
+	    if (newFile != null) {
+		txt.setText(newFile);
+
+		gCon.changeMameIniValue(iniFile, mpc.getOption(), txt.getText()
+			.replace(System.getProperty("user.home"), "$HOME"));
+		writeIni();
+	    }
+	}
+    };
+
+    private ModifyListener TxtModifyListener = new ModifyListener() {
+	public void modifyText(ModifyEvent e) {
+	    Text txt = (Text) e.widget;
+	    if (txt.getParent() instanceof MameTextComp) {
+		MameTextComp par = (MameTextComp) txt.getParent();
+		gCon.changeMameIniValue(iniFile, par.getOption(), txt.getText());
+		writeIni();
+	    } else if (txt.getParent() instanceof MamePathComp) {
+		MamePathComp par = (MamePathComp) txt.getParent();
+		gCon.changeMameIniValue(iniFile, par.getOption(), txt.getText());
+		writeIni();
+	    }
+	}
+    };
+
+    private SelectionAdapter doubleSpinnerAdapter = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent e) {
+	    Spinner spin = (Spinner) e.widget;
+	    MameSpinner ms = (MameSpinner) spin.getParent();
+
+	    gCon.changeMameIniValue(iniFile, ms.getMameOption(), spin.getText());
+	    writeIni();
+	};
+    };
+
+    private SelectionAdapter intSpinnerAdapter = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent e) {
+	    Spinner spin = (Spinner) e.widget;
+	    MameSpinner ms = (MameSpinner) spin.getParent();
+
+	    gCon.changeMameIniValue(iniFile, ms.getMameOption(), spin.getText());
+	    writeIni();
+	};
+    };
+
+    public void createMameCombo(String name, String mameOption, String[] items) {
+	MameCombo mc = new MameCombo(group, SWT.READ_ONLY);
+	Combo combo = mc.getCombo();
+	combo.setItems(items);
+	String iniOp = gCon.getMameIniValue(iniFile, mameOption);
+
+	if (iniOp == null) {
+	    combo.setEnabled(false);
+	} else {
+	    combo.select(combo.indexOf(iniOp));
+
+	}
+
+	mc.getLabel().setToolTipText(getToolTip(mameOption));
+	combo.addSelectionListener(mameComboAdapter);
+	mc.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+	mc.setLabelText(name);
+	mc.setOption(mameOption);
+    }
+
+    public void createCheckBox(String name, String mameOption) {
+	Button btn = new Button(group, SWT.CHECK);
+	btn.setText(name);
+	String iniOp = gCon.getMameIniValue(iniFile, mameOption);
+	if (iniOp == null) {
+	    btn.setEnabled(false);
+	} else if (iniOp.equals("1")) {
+	    btn.setSelection(true);
+	} else {
+	    btn.setSelection(false);
+	}
+	btn.setToolTipText(getToolTip(mameOption));
+	btn.addSelectionListener(checkBoxAdapter);
+	btn.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+    }
+
+    public void createMamePathComp(String name, String mameOption, int option) {
+	MamePathComp mpc = new MamePathComp(group, SWT.NONE);
+	Text txt = mpc.getText();
+
+	mpc.setOption(mameOption);
+	String iniOp = gCon.getMameIniValue(iniFile, mpc.getOption());
+	if (iniOp == null) {
+	    txt.setEnabled(false);
+	    mpc.getButton().setEnabled(false);
+	} else {
+	    txt.setText(iniOp.replace("$HOME", System.getProperty("user.home")));
+	}
+
+	mpc.getLabel().setToolTipText(getToolTip(mameOption));
+	mpc.setLabelText(name);
+	mpc.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+	txt.addModifyListener(TxtModifyListener);
+	switch (option) {
+	case LOAD_DIALOG:
+	    mpc.getButton().addSelectionListener(mameLoadPathListener);
+	    break;
+	case SAVE_DIALOG:
+	    mpc.getButton().addSelectionListener(mameSavePathListener);
+	    break;
+	case DIRECTORY_DIALOG:
+	    mpc.getButton().addSelectionListener(mameDirPathListener);
+	}
+    }
+
+    public void CreateDoubleSpinner(String name, String mameOption, int maxValue) {
+	MameSpinner ms = new MameSpinner(group, SWT.NONE,
+		MameSpinner.DOUBLE_SPINNER);
+	Spinner spin = ms.getSpin();
+	ms.setLabelText(name);
+
+	ms.setMameOption(mameOption);
+	String iniOp = gCon.getMameIniValue(iniFile, ms.getMameOption());
+	if (iniOp == null) {
+	    spin.setEnabled(false);
+	} else {
+	    spin.setSelection((int) ((new Double(iniOp).doubleValue()) * 10));
+	    spin.setMaximum(maxValue * 10);
+	}
+
+	ms.getLabel().setToolTipText(getToolTip(mameOption));
+	spin.addSelectionListener(doubleSpinnerAdapter);
+	ms.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+    }
+
+    public void createIntSpinner(String name, String mameOption, int minValue,
+	    int maxValue) {
+	MameSpinner ms = new MameSpinner(group, SWT.NONE,
+		MameSpinner.INT_SPINNER);
+	Spinner spin = ms.getSpin();
+	ms.setLabelText(name);
+	ms.setMameOption(mameOption);
+	String iniOp = gCon.getMameIniValue(iniFile, ms.getMameOption());
+	if (iniOp == null) {
+	    spin.setEnabled(false);
+	} else if (iniOp.equals("auto")) {
+	    spin.setSelection(0);
+	} else {
+	    spin.setSelection(new Integer(iniOp).intValue());
+	}
+
+	spin.setMinimum(minValue);
+	spin.setMaximum(maxValue);
+	ms.getLabel().setToolTipText(getToolTip(mameOption));
+	spin.addSelectionListener(intSpinnerAdapter);
+	ms.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+    }
+
+    public void createTextBox(String name, String mameOption) {
+	MameTextComp mtc = new MameTextComp(group, SWT.NONE);
+	Text txt = mtc.getText();
+
+	mtc.setOption(mameOption);
+	String iniOp = gCon.getMameIniValue(iniFile, mtc.getOption());
+	if (iniOp == null) {
+	    txt.setEnabled(false);
+	} else {
+	    txt.setText(iniOp.replace("$HOME", System.getProperty("user.home")));
+	}
+
+	mtc.getLabel().setToolTipText(getToolTip(mameOption));
+	mtc.setLabelText(name);
+	mtc.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+	txt.addModifyListener(TxtModifyListener);
+    }
+    
+    public String getToolTip(String option) {
+	String op = "-" + option + " ";
+	for (String i : mameUsage) {
+	    if (i.startsWith(op)) {
+		return i.replace(op, "").trim();
+	    }
+	}
+	return "This option is not available in this version of Mame";
+    }
+
+    private void writeIni() {
+	FileIO.writeTofile(iniFile, new File(mExec.getIniPath() + "/mame.ini"),
+		false);
+    }
+
+    public GuiControls getgCon() {
+	return gCon;
+    }
+
+    public void setgCon(GuiControls gCon) {
+	this.gCon = gCon;
+    }
+
+    public MameExecutable getmExec() {
+	return mExec;
+    }
+
+    public void setmExec(MameExecutable mExec) {
+	this.mExec = mExec;
+    }
+
+    public ArrayList<String> getIniFile() {
+	return iniFile;
+    }
+
+    public void setIniFile(ArrayList<String> iniFile) {
+	this.iniFile = iniFile;
+    }
+
+    public Group getGroup() {
+	return group;
+    }
+
+    public void setGroup(Group group) {
+	this.group = group;
+    }
+}package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class InputOptions extends IniOption {
+
+    public InputOptions() {
+    }
+
+    public InputOptions(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+    
+    @Override
+    public void initUI() {
+	createCheckBox("Coin Lockout", "coin_lockout");
+	createCheckBox("Mouse", "mouse");
+	createCheckBox("Joystick", "joystick");
+	createCheckBox("Lightgun", "lightgun");
+	createCheckBox("Offscreen Reload", "offscreen_reload");
+	createCheckBox("Multi Keyboard", "multikeyboard");
+	createCheckBox("Multi Mouse", "coin_lockout");
+	createCheckBox("Steady Key", "steadykey");
+	createCheckBox("Ui Active", "ui_active");
+	createCheckBox("Joystick Contradictory", "joystick_contradictory");
+	createCheckBox("Natural", "natural");
+
+	createMamePathComp("Ctrlr", "ctrlr", LOAD_DIALOG);
+	createMamePathComp("Joystick Map", "joystick_map", LOAD_DIALOG);
+
+	CreateDoubleSpinner("Joystick Deadzone", "joystick_deadzone", 1);
+	CreateDoubleSpinner("Joystick Saturation", "joystick_saturation", 1);
+	CreateDoubleSpinner("Coin Impulse", "coin_impulse", 10);
+    }
+
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class DebuggingOption extends IniOption {
+
+    public DebuggingOption() {
+    }
+
+    public DebuggingOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+    
+    @Override
+    public void initUI() {
+	createCheckBox("Log", "log");
+	createCheckBox("Verbose", "verbose");
+	createCheckBox("Update In Pause", "update_in_pause");
+	createCheckBox("Debug", "debug");
+	createCheckBox("Debug Internal", "debug_internal");
+	createCheckBox("Os Log", "oslog");
+	
+	createMamePathComp("Debug Script", "debugscript", LOAD_DIALOG);
+	
+	createIntSpinner("Watchdog", "watchdog",0, 60000);
+    }
+
+}
+/**
+ * This file is part of JMameUI.
+ * 
+ * JMameUI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JMameUI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ */
+package jmameui.gui.swt.preferences.options;
+
+import java.io.File;
+import java.util.ArrayList;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.List;
+import org.eclipse.swt.widgets.TabFolder;
+
+public class JMameMSetTab {
+
+	private Group jMSetGroup;
+	private Label jMSortLab;
+	private Combo jMameVBCombo;
+	private Button mameExecAddBtn;
+	private Button mameExecRmBtn;
+	private List mameExecList;
+	private Label mameExecLab;
+	private GuiControls gCon;
+
+	private SelectionAdapter rmMameListener = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			int index = mameExecList.getSelectionIndex();
+			String text = mameExecList
+					.getItem(mameExecList.getSelectionIndex());
+
+			if (text.equals(gCon.getSystemMame().getPath())) {
+				gCon.changeSettingsFile("use_system_mame", "false");
+			}
+			gCon.removeMameExecutable(new File(text));
+			mameExecList.remove(index);
+		};
+	};
+
+	private SelectionAdapter addMameListener = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			FileDialog dialog = new FileDialog(jMSetGroup.getShell());
+			dialog.setText("Choose Mame executable");
+			dialog.setFilterPath(System.getProperty("user.home"));
+			String newMame = dialog.open();
+			if (newMame != null) {
+				gCon.addMameExecutable(new File(newMame),false);
+				mameExecList.removeAll();
+				addToList(mameExecList, gCon.getMameExecutables());
+			}
+		}
+	};
+
+	private SelectionAdapter comboListener = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			gCon.changeSettingsFile("mame_sort", jMameVBCombo.getText());
+		};
+	};
+
+	public JMameMSetTab(TabFolder owner, GuiControls g, int option) {
+		jMSetGroup = new Group(owner, option);
+		gCon = g;
+		initUI();
+	}
+
+	private void initUI() {
+		jMSetGroup.setLayout(new GridLayout(4, false));
+
+		mameExecLab = new Label(jMSetGroup, SWT.None);
+		mameExecLab.setText("Mame executables:");
+		mameExecLab.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false,
+				false));
+
+		mameExecList = new List(jMSetGroup, SWT.MULTI | SWT.BORDER | SWT.WRAP
+				| SWT.V_SCROLL);
+		addToList(mameExecList, gCon.getMameExecutables());
+		mameExecList.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true,
+				1, 1));
+
+		mameExecRmBtn = new Button(jMSetGroup, SWT.PUSH);
+		mameExecRmBtn.setText("Remove");
+		mameExecRmBtn.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false,
+				false));
+		mameExecRmBtn.addSelectionListener(rmMameListener);
+
+		mameExecAddBtn = new Button(jMSetGroup, SWT.PUSH);
+		mameExecAddBtn.setText("Add");
+		mameExecAddBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false,
+				false, 1, 1));
+		mameExecAddBtn.addSelectionListener(addMameListener);
+
+		jMSortLab = new Label(jMSetGroup, SWT.NONE);
+		jMSortLab.setText("Mame version bias");
+		jMSortLab
+				.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+
+		jMameVBCombo = new Combo(jMSetGroup, SWT.READ_ONLY);
+		jMameVBCombo.setItems(new String[] { "newer", "older", "system" });
+		jMameVBCombo.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false,
+				false));
+		jMameVBCombo.addSelectionListener(comboListener);
+		jMameVBCombo.select(jMameVBCombo.indexOf(gCon
+				.readSettingsFile("mame_sort")));
+
+	}
+
+	public void addToList(List l, ArrayList<MameExecutable> items) {
+		for (MameExecutable i : items) {
+			l.add(i.getPath());
+		}
+	}
+
+	public Group getGroup() {
+		return jMSetGroup;
+	}
+}package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class SDLKeyboardOption extends IniOption {
+
+    public SDLKeyboardOption() {
+    }
+
+    public SDLKeyboardOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+    
+    @Override
+    public void initUI() {
+	createCheckBox("Keymap", "keymap");
+	
+	createMamePathComp("Keymap File", "keymap_file", LOAD_DIALOG);
+	
+	createTextBox("Ui Mode Key", "uimodekey");
+    }
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class FullScreenOption extends IniOption {
+
+    public FullScreenOption() {
+    }
+
+    public FullScreenOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+    
+    @Override
+    public void initUI() {
+	createCheckBox("Switch Res", "switchres");
+	createCheckBox("Use All Heads", "useallheads");
+    }
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class VideoOptions extends IniOption {
+	
+	public VideoOptions(Group owner, GuiControls g, MameExecutable me) {
+	    super(owner, g, me);
+	}
+
+	public VideoOptions() {
+	}
+
+	public void initUI() {
+		createMameCombo("Video","video", new String[] { "opengl", "soft" });
+		createMameCombo("Num Screens","numscreens", new String[] { "1" });
+		createMameCombo("Scale Mode","scalemode", new String[] { "none", "async", "yv12",
+				"yuy2", "yv12x2", "yuy2x2 (-video soft only)" });
+		createCheckBox("Window","window");
+		createCheckBox("Maximize","maximize");
+		createCheckBox("Keep Aspect","keepaspect");
+		createCheckBox("Center H","centerh");
+		createCheckBox("Center V","centerv");
+		createCheckBox("Sync Refresh","syncrefresh");
+		createCheckBox("Wait Vsync","waitvsync");
+		CreateDoubleSpinner("Uneven Stretch","unevenstretch", 10);
+
+		getGroup().pack();
+	}
+
+}package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class ArtworkOption extends IniOption {
+
+    public ArtworkOption() {
+    }
+
+    public ArtworkOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+    
+    @Override
+    public void initUI() {
+	createCheckBox("Artwork Crop", "artwork_crop");
+	createCheckBox("Use Backdrops", "use_backdrops");
+	createCheckBox("Use Overlays", "use_overlays");
+	createCheckBox("Use Bezels", "use_bezels");
+	createCheckBox("Use Cpanels", "use_cpanels");
+	createCheckBox("Use Marquees", "use_marquees");
+
+    }
+
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class PerformanceOption extends IniOption {
+    public PerformanceOption(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+
+    public PerformanceOption() {
+    }
+
+    public void initUI() {
+	createCheckBox("Multi Threading", "multithreading");
+	createCheckBox("Sdl Video FPS", "sdlvideofps");
+	createIntSpinner("Number Processors", "numprocessors", 0,Runtime
+		.getRuntime().availableProcessors());
+	createIntSpinner("Bench", "bench",0, 10000);
+    }
+}
+package jmameui.gui.swt.preferences.options;
+
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.widgets.Group;
+
+public class InputAutomatic extends IniOption{
+
+    public InputAutomatic() {
+    }
+    
+    public InputAutomatic(Group owner, GuiControls g, MameExecutable me) {
+	super(owner, g, me);
+    }
+    
+    @Override
+    public void initUI() {
+	String[] ops = new String[]{"none","keyboard","mouse","lightgun","joystick"};
+	
+	createMameCombo("Paddle Device", "paddle_device", ops);
+	createMameCombo("Adstick Device", "adstick_device", ops);
+	createMameCombo("Pedal Device", "pedal_device", ops);
+	createMameCombo("Dial Device", "dial_device", ops);
+	createMameCombo("Trackball Device", "trackball_device", ops);
+	createMameCombo("Lightgun Device", "lightgun_device", ops);
+	createMameCombo("Positional Device", "positional_device", ops);
+	createMameCombo("Mouse Device", "mouse_device", ops);
+    }
+
+}
+/*
+ * This file is part of JMameUI.
+ * 
+ * JMameUI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JMameUI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package jmameui.gui.swt.preferences;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
+import java.util.HashMap;
+
+import jmameui.gui.swt.SWTJMameUI;
+import jmameui.gui.swt.preferences.options.ArtworkOption;
+import jmameui.gui.swt.preferences.options.CorePerformanceOption;
+import jmameui.gui.swt.preferences.options.DebuggingOption;
+import jmameui.gui.swt.preferences.options.FullScreenOption;
+import jmameui.gui.swt.preferences.options.IniOption;
+import jmameui.gui.swt.preferences.options.InputAutomatic;
+import jmameui.gui.swt.preferences.options.InputOptions;
+import jmameui.gui.swt.preferences.options.JMameMSetTab;
+import jmameui.gui.swt.preferences.options.JMameSearchTab;
+import jmameui.gui.swt.preferences.options.JMameTableTab;
+import jmameui.gui.swt.preferences.options.MiscOption;
+import jmameui.gui.swt.preferences.options.OpenGLOption;
+import jmameui.gui.swt.preferences.options.OutputDirOption;
+import jmameui.gui.swt.preferences.options.PerWindowVideoOption;
+import jmameui.gui.swt.preferences.options.PerformanceOption;
+import jmameui.gui.swt.preferences.options.RotationOption;
+import jmameui.gui.swt.preferences.options.SDLKeyboardOption;
+import jmameui.gui.swt.preferences.options.SDLOption;
+import jmameui.gui.swt.preferences.options.ScreenOption;
+import jmameui.gui.swt.preferences.options.SearchPathOption;
+import jmameui.gui.swt.preferences.options.SoundOption;
+import jmameui.gui.swt.preferences.options.StatePlaybackOption;
+import jmameui.gui.swt.preferences.options.VectorOption;
+import jmameui.gui.swt.preferences.options.VideoOptions;
+import jmameui.mame.FileIO;
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameExecutable;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.List;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.widgets.TabItem;
+
+public class PreferencesShell {
+
+    private Shell shell;
+    private TabFolder mainTabs;
+    private Composite mameTabsComp;
+    private TabItem mameTab;
+    private Button closeBtn;
+    private Combo mameCombo;
+    private TabItem jMameTab;
+    private Composite jMameTabsComp;
+    private TabFolder jMameTabs;
+    private TabItem jMameMTab;
+    private Group group;
+    private List mamePrefList;
+    private MameExecutable currExec = null;
+    private GuiControls Gcon;
+    private SWTJMameUI jMame;
+    ScrolledComposite sc;
+    ScrolledComposite sc1;
+
+    private HashMap<String, IniOption> options = new HashMap<String, IniOption>();
+
+    private SelectionAdapter closeBtnListener = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent arg0) {
+	    shell.dispose();
+	};
+    };
+
+    private SelectionAdapter mameComboAdapter = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent arg0) {
+	    for (MameExecutable i : Gcon.getMameExecutables()) {
+		if (i.getVersion().equals(mameCombo.getText())) {
+		    currExec = i;
+		    mamePrefList.notifyListeners(SWT.Selection, new Event());
+		}
+	    }
+	}
+    };
+    private SelectionAdapter mamePrefListAdapter = new SelectionAdapter() {
+	public void widgetSelected(SelectionEvent arg0) {
+	    if (currExec == null) {
+		return;
+	    }
+
+	    for (Control i : group.getChildren()) {
+		i.dispose();
+
+	    }
+
+	    try {
+		Class<?> cls = Class.forName(options
+			.get(mamePrefList.getItem(mamePrefList
+				.getSelectionIndex())).getClass().getName());
+		Constructor<?> cons = cls.getConstructor(Group.class,
+			GuiControls.class, MameExecutable.class);
+		cons.newInstance(group, Gcon, currExec);
+	    } catch (ClassNotFoundException e) {
+		FileIO.writeToLogFile(e);
+	    } catch (NoSuchMethodException e) {
+		FileIO.writeToLogFile(e);
+	    } catch (SecurityException e) {
+		FileIO.writeToLogFile(e);
+	    } catch (InstantiationException e) {
+		FileIO.writeToLogFile(e);
+	    } catch (IllegalAccessException e) {
+		FileIO.writeToLogFile(e);
+	    } catch (IllegalArgumentException e) {
+		FileIO.writeToLogFile(e);
+	    } catch (InvocationTargetException e) {
+		FileIO.writeToLogFile(e);
+	    }
+	    
+	 
+	    sc1.setMinSize(group.computeSize(SWT.DEFAULT,SWT.DEFAULT));
+	    group.layout();
+	    mameTabsComp.layout(true, true);
+	}
+    };
+    private TabItem jMameTableTab;
+	private TabItem jMameSearchTab;
+
+    public PreferencesShell(Shell owner, SWTJMameUI j) {
+	shell = new Shell(owner, SWT.RESIZE);
+	Gcon = j.getgCon();
+	jMame = j;
+	shell.setLayout(new GridLayout(1, false));
+	shell.setText("JMameUI - Preferences");
+	initUI();
+
+	popOptions();
+	shell.pack();
+	shell.setSize(640, 480);
+	shell.open();
+
+	while (!shell.isDisposed()) {
+	    if (!shell.getDisplay().readAndDispatch()) {
+		shell.getDisplay().sleep();
+	    }
+	}
+    }
+
+    public void popOptions() {
+	options.put("Core Performance", new CorePerformanceOption());
+	options.put("Output Directory", new OutputDirOption());
+	options.put("Performance", new PerformanceOption());
+	options.put("Rotation", new RotationOption());
+	options.put("Search Paths", new SearchPathOption());
+	options.put("State/Playback", new StatePlaybackOption());
+	options.put("Video", new VideoOptions());
+	options.put("Screen", new ScreenOption());
+	options.put("Debugging", new DebuggingOption());
+	options.put("SDL Lowlevel", new SDLOption());
+	options.put("Vector", new VectorOption());
+	options.put("Input", new InputOptions());
+	options.put("Input Automatic", new InputAutomatic());
+	options.put("Artwork", new ArtworkOption());
+	options.put("Sound", new SoundOption());
+	options.put("Misc", new MiscOption());
+	options.put("Full Screen", new FullScreenOption());
+	options.put("SDL Keyboard", new SDLKeyboardOption());
+	options.put("SDL Joystick", new SDLKeyboardOption());
+	options.put("Per-Window Video", new PerWindowVideoOption());
+	options.put("OpenGL", new OpenGLOption());
+
+	String[] keys = options.keySet().toArray(new String[0]);
+	Arrays.sort(keys);
+	mamePrefList.setItems(keys);
+	mamePrefList.setSelection(0);
+	sc.setMinSize(mamePrefList.computeSize(150,
+		mamePrefList.getItemHeight() * (mamePrefList.getItemCount()+1)));
+	mameCombo.notifyListeners(SWT.Selection, new Event());
+    }
+
+    private void initUI() {
+	mainTabs = new TabFolder(shell, SWT.NONE);
+	mainTabs.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+	mameTab = new TabItem(mainTabs, SWT.NONE);
+	mameTab.setText("Mame");
+
+	jMameTab = new TabItem(mainTabs, SWT.NONE);
+	jMameTab.setText("JMameUI");
+
+	mameTabsComp = new Composite(mainTabs, SWT.NONE);
+	mameTabsComp.setLayout(new GridLayout(2, false));
+	mameTab.setControl(mameTabsComp);
+
+	jMameTabsComp = new Composite(mainTabs, SWT.NONE);
+	jMameTabsComp.setLayout(new GridLayout(1, false));
+	jMameTab.setControl(jMameTabsComp);
+
+	jMameTabs = new TabFolder(jMameTabsComp, SWT.BORDER);
+	jMameTabs.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+	mameCombo = new Combo(mameTabsComp, SWT.READ_ONLY);
+	addToMameCombo();
+	mameCombo.addSelectionListener(mameComboAdapter);
+	mameCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false,
+		false, 1, 1));
+	mameCombo.select(0);
+	
+	sc1 = new ScrolledComposite(mameTabsComp, SWT.BORDER | SWT.H_SCROLL
+		| SWT.V_SCROLL);
+	sc1.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true,1,2));
+	sc1.setExpandHorizontal(true);
+	sc1.setExpandVertical(true);
+
+	group = new Group(sc1, SWT.SHADOW_ETCHED_IN | SWT.V_SCROLL);
+	group.setLayout(new GridLayout(1, false));
+	sc = new ScrolledComposite(mameTabsComp, SWT.BORDER | SWT.H_SCROLL
+		| SWT.V_SCROLL);
+	sc1.setContent(group);
+	
+	sc.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true));
+	sc.setExpandHorizontal(true);
+	sc.setExpandVertical(true);
+	mamePrefList = new List(sc, SWT.BORDER);
+	mamePrefList.addSelectionListener(mamePrefListAdapter);
+	sc.setContent(mamePrefList);
+	
+
+	jMameMTab = new TabItem(jMameTabs, SWT.NONE);
+	jMameMTab.setText("Mame");
+	jMameMTab.setControl(new JMameMSetTab(jMameTabs, Gcon,
+		SWT.SHADOW_ETCHED_OUT).getGroup());
+	
+	jMameTableTab = new TabItem(jMameTabs, SWT.NONE);
+	jMameTableTab.setText("Tables");
+	jMameTableTab.setControl(new JMameTableTab(jMameTabs, jMame).getGroup());
+	
+	jMameSearchTab = new TabItem(jMameTabs, SWT.NONE);
+	jMameSearchTab.setText("Search");
+	jMameSearchTab.setControl(new JMameSearchTab(jMameTabs, jMame).getGroup());
+
+	closeBtn = new Button(shell, SWT.PUSH);
+	closeBtn.setText("Close");
+	closeBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+	closeBtn.addSelectionListener(closeBtnListener);
+    }
+
+    private void addToMameCombo() {
+	for (MameExecutable i : Gcon.getMameExecutables()) {
+	    mameCombo.add(i.getVersion());
+	}
+    }
+}
+/**
+ * This file is part of JMameUI.
+ * 
+ * JMameUI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JMameUI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ */
+package jmameui.gui.swt.preferences.widgets;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Spinner;
+
+public class MameSpinner extends Composite {
+
+    public static int DOUBLE_SPINNER = 0;
+    public static int INT_SPINNER = 1;
+    private Spinner spin;
+    private Label label;
+    private String mameOption = "";
+
+    public MameSpinner(Composite arg0, int arg1, int option) {
+	super(arg0, arg1);
+	this.setLayout(new GridLayout(2, false));
+
+	initUI(option);
+    }
+
+    private void initUI(int option) {
+	label = new Label(this, SWT.NONE);
+	label.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+
+	spin = new Spinner(this, SWT.BORDER);
+	spin.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+	
+	if (option == DOUBLE_SPINNER) {
+	    spin.setDigits(1);
+	    spin.setIncrement(1);
+	} else if (option == INT_SPINNER) {
+	    spin.setIncrement(1);
+	}
+    }
+
+    public Spinner getSpin() {
+        return spin;
+    }
+
+    public void setSpin(Spinner spin) {
+        this.spin = spin;
+    }
+
+    public Label getLabel() {
+        return label;
+    }
+
+    public void setLabel(Label label) {
+        this.label = label;
+    }
+
+    public String getMameOption() {
+        return mameOption;
+    }
+
+    public void setMameOption(String mameOption) {
+        this.mameOption = mameOption;
+    }
+
+    public void setLabelText(String text) {
+	label.setText(text);
+    }
+
+    public String getLabelText() {
+	return label.getText();
+    }
+}
+/**
+ * This file is part of JMameUI.
+ * 
+ * JMameUI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JMameUI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ */
+package jmameui.gui.swt.preferences.widgets;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Text;
+
+public class MamePathComp extends Composite {
+
+    private Label label;
+    private Text text;
+    private Button button;
+    private String option;
+
+    public MamePathComp(Composite arg0, int arg1) {
+	super(arg0, arg1);
+	this.setLayout(new GridLayout(3, false));
+	initUI();
+    }
+
+    private void initUI() {
+	label = new Label(this, SWT.NONE);
+	label.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+
+	text = new Text(this, SWT.BORDER);
+	text.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+	
+	button = new Button(this,SWT.PUSH);
+	button.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+	button.setText("Browse");
+    }
+
+    public void setLabelText(String text){
+	label.setText(text);
+    }
+    
+    public String getLabelText(){
+	return label.getText();
+    }
+
+    public Label getLabel() {
+	return label;
+    }
+
+    public void setLabel(Label label) {
+	this.label = label;
+    }
+
+    public Text getText() {
+	return text;
+    }
+
+    public void setText(Text text) {
+	this.text = text;
+    }
+
+    public Button getButton() {
+	return button;
+    }
+
+    public void setButton(Button button) {
+	this.button = button;
+    }
+
+    public String getOption() {
+        return option;
+    }
+
+    public void setOption(String option) {
+        this.option = option;
+    }   
+ }
+/**
+ * This file is part of JMameUI.
+ * 
+ * JMameUI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JMameUI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ */
+package jmameui.gui.swt.preferences.widgets;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Text;
+
+public class MameTextComp extends Composite {
+    private Label label;
+    private Text text;
+    private String option;
+
+    public MameTextComp(Composite arg0, int arg1) {
+	super(arg0, arg1);
+	this.setLayout(new GridLayout(2, false));
+	initUI();
+    }
+
+    private void initUI() {
+	label = new Label(this, SWT.NONE);
+	label.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+	
+	text = new Text(this, SWT.BORDER);
+	text.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+    }
+
+    public void setLabelText(String text) {
+	label.setText(text);
+    }
+
+    public String getLabelText() {
+	return label.getText();
+    }
+
+    public Label getLabel() {
+	return label;
+    }
+
+    public void setLabel(Label label) {
+	this.label = label;
+    }
+
+    public Text getText() {
+	return text;
+    }
+
+    public void setText(Text text) {
+	this.text = text;
+    }
+
+    public String getOption() {
+	return option;
+    }
+
+    public void setOption(String option) {
+	this.option = option;
+    }
+}
+/**
+ * This file is part of JMameUI.
+ * 
+ * JMameUI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JMameUI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ */
+package jmameui.gui.swt.preferences.widgets;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Label;
+
+public class MameCombo extends Composite {
+
+    private Combo combo;
+    private Label label;
+    private String option = "";
+    
+    public MameCombo(Composite arg0, int arg1) {
+	super(arg0, arg1);
+	this.setLayout(new GridLayout(2,false));
+	
+	initUI(arg1);
+    }
+    
+    private void initUI(int arg1) {
+	label = new Label(this, SWT.NONE);
+	label.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, true, 1, 1));
+	combo = new Combo(this, arg1);
+	combo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true, 1, 1));	
+    }
+
+
+    public void setLabelText(String text){
+	label.setText(text);
+    }
+    
+    public String getLabelText(){
+	return label.getText();
+    }
+
+    public Combo getCombo() {
+        return combo;
+    }
+
+    public void setCombo(Combo combo) {
+        this.combo = combo;
+    }
+
+    public Label getLabel() {
+        return label;
+    }
+
+    public void setLabel(Label label) {
+        this.label = label;
+    }
+
+    public String getOption() {
+        return option;
+    }
+
+    public void setOption(String option) {
+        this.option = option;
+    }
+}
+package jmameui.gui.swt;
+
+import java.util.ArrayList;
+
+import jmameui.mame.FileIO;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Shell;
+
+public class AboutDialog {
+    private Label proNameLab;
+    private Label proDesLab;
+    private Label proVerLab;
+    private Label copyWriteLab;
+    private Button closeBtn;
+    private Button licBtn;
+    private Shell shell;
+
+    public AboutDialog(Shell owner) {
+	shell = new Shell(shell, SWT.RESIZE);
+	shell.setLayout(new GridLayout(2, false));
+	initUI();
+	shell.pack();
+	shell.open();
+    }
+
+    private void initUI() {
+	proNameLab = new Label(shell, SWT.None);
+	Font initialFont = proNameLab.getFont();
+	FontData[] fontData = initialFont.getFontData();
+	for (int i = 0; i < fontData.length; i++) {
+	    fontData[i].setHeight(24);
+	}
+	proNameLab.setFont(new Font(Display.getDefault(), fontData));
+	proNameLab.setText(Display.getAppName());
+	proNameLab.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
+		false, 2, 1));
+
+	proDesLab = new Label(shell, SWT.None);
+	proDesLab.setText("Java Mame User Interface");
+	proDesLab.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
+		false, 2, 1));
+
+	proVerLab = new Label(shell, SWT.None);
+	proVerLab.setText(Display.getAppVersion());
+	proVerLab.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
+		false, 2, 1));
+
+	copyWriteLab = new Label(shell, SWT.None);
+	copyWriteLab.setText("Copywrite © James McCartney 2013");
+	copyWriteLab.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
+		false, 2, 1));
+
+	licBtn = new Button(shell, SWT.PUSH);
+	licBtn.setText("Licence");
+	licBtn.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false,
+		1, 1));
+	licBtn.addSelectionListener(new SelectionAdapter() {
+	    public void widgetSelected(SelectionEvent arg0) {
+		ArrayList<String> lin = FileIO.readInputStream(getClass()
+			.getClassLoader().getResourceAsStream("LICENSE"));
+
+		new MameDialog(shell, lin, MameDialog.TEXTAREA);
+	    }
+	});
+
+	closeBtn = new Button(shell, SWT.PUSH);
+	closeBtn.setText("Close");
+	closeBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false,
+		false, 1, 1));
+	closeBtn.addSelectionListener(new SelectionAdapter() {
+	    public void widgetSelected(SelectionEvent arg0) {
+		shell.dispose();
+	    }
+	});
+    }
+}
+package jmameui.gui.swt;
+
+import java.io.File;
+import java.net.MalformedURLException;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.browser.Browser;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.ToolBar;
+import org.eclipse.swt.widgets.ToolItem;
+import org.eclipse.swt.widgets.Tree;
+
+public class HelpDialog {
+
+	private Shell shell;
+	private ToolBar tb;
+	private ToolItem backBtn;
+	private ToolItem upBtn;
+	private ToolItem fwdBtn;
+	private Tree tree;
+	private Browser browser;
+	private Button closeBtn;
+
+	public HelpDialog(Shell owner) {
+		shell = new Shell(owner, SWT.RESIZE);
+		shell.setText(Display.getAppName() + "-Help");
+		shell.setLayout(new GridLayout(2, false));
+
+		initUI();
+
+		shell.pack();
+		shell.open();
+	}
+
+	private void initUI() {
+		tb = new ToolBar(shell, SWT.None);
+		tb.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false, 2, 1));
+
+		backBtn = new ToolItem(tb, SWT.PUSH);
+		backBtn.setText("Back");
+		backBtn.setImage(SWTJMameUI.loadAImage("arrow-left.png"));
+
+		upBtn = new ToolItem(tb, SWT.PUSH);
+		upBtn.setText("Up");
+		upBtn.setImage(SWTJMameUI.loadAImage("arrow-up.png"));
+
+		fwdBtn = new ToolItem(tb, SWT.PUSH);
+		fwdBtn.setText("Forward");
+		fwdBtn.setImage(SWTJMameUI.loadAImage("arrow-right.png"));
+
+		tree = new Tree(shell, SWT.None);
+		tree.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true, 1, 1));
+
+		browser = new Browser(shell, SWT.NONE);
+		browser.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+		String a = "jmameui/gui/swt/image.html";
+
+		browser.setUrl(getClass().getClassLoader().getResource(a).toString());
+
+		closeBtn = new Button(shell, SWT.PUSH);
+		closeBtn.setText("Close");
+		closeBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false,
+				false, 2, 1));
+
+	}
+
+}
+/*
+ * This file is part of JMameUI.
+ * 
+ * JMameUI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JMameUI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package jmameui.gui.swt;
+
+import java.util.ArrayList;
+import java.util.Collection;
+
+import jmameui.mame.FileIO;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Text;
+
+public class MameDialog {
+
+	public static final int WARNING = 0;
+	public static final int INFORMATION = 1;
+	public static final int TEXTAREA = 2;
+	public static final int ERROR = 3;
+
+	private Shell dialogShell;
+	private Image icon;
+	private ArrayList<String> data = new ArrayList<String>();
+	private SelectionAdapter closeAdapter = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			dialogShell.dispose();
+			super.widgetSelected(arg0);
+		}
+	};
+
+	public MameDialog(Shell owner, Collection<? extends String> text, int option) {
+		dialogShell = new Shell(owner, SWT.RESIZE);
+		data = new ArrayList<String>(text);
+		start(option);
+	}
+
+	public MameDialog(Shell owner, String text, int option) {
+		dialogShell = new Shell(owner, SWT.RESIZE);
+		data.add(text);
+		start(option);
+	}
+
+	public MameDialog(Shell owner, int option) {
+		start(option);
+	}
+
+	private void start(int option) {
+		switch (option) {
+		case TEXTAREA:
+			initTEXTAREA();
+			break;
+		case WARNING:
+			icon = Display.getDefault().getSystemImage(SWT.ICON_WARNING);
+			InitInformation(false);
+			break;
+		case INFORMATION:
+			icon = Display.getDefault().getSystemImage(SWT.ICON_INFORMATION);
+			InitInformation(false);
+			break;
+		case ERROR:
+			icon = Display.getDefault().getSystemImage(SWT.ICON_ERROR);
+			InitInformation(true);
+			break;
+		}
+		dialogShell.open();
+	}
+
+	private void InitInformation(boolean err) {
+		dialogShell.setLayout(new GridLayout(2, false));
+		dialogShell.setText("JMameUI");
+
+		Label iconLab = new Label(dialogShell, SWT.NONE);
+		iconLab.setImage(icon);
+		iconLab.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
+
+		Label txtLab = new Label(dialogShell, SWT.NONE);
+		txtLab.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
+		StringBuilder sb = new StringBuilder();
+		for (String i : data) {
+			sb.append(i + "\n");
+		}
+		txtLab.setText(sb.toString());
+
+		Button logBtn = new Button(dialogShell, SWT.PUSH);
+		logBtn.setText("View Log");
+		logBtn.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				new MameDialog(dialogShell,
+						FileIO.readFile(FileIO.getLogFile()), TEXTAREA);
+			}
+		});
+		logBtn.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+
+		if (err && !FileIO.getLogFile().exists()) {
+			logBtn.setEnabled(false);
+		} else if (!err) {
+			logBtn.setVisible(false);
+		}
+
+		Button btn = new Button(dialogShell, SWT.PUSH);
+		btn.setText("Close");
+		btn.addSelectionListener(closeAdapter);
+		btn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+		dialogShell.pack();
+	}
+
+	private void initTEXTAREA() {
+		dialogShell.setText("JMameUI");
+		dialogShell.setLayout(new GridLayout(1, false));
+		Text text = new Text(dialogShell, SWT.BORDER | SWT.WRAP | SWT.V_SCROLL
+				| SWT.H_SCROLL);
+		text.setEditable(false);
+		StringBuilder sb = new StringBuilder();
+		for (String i : data) {
+			sb.append(i + "\n");
+		}
+		text.append(sb.toString());
+		text.setSelection(0);
+		GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
+		gridData.heightHint = 5 * text.getLineHeight();
+		text.setLayoutData(gridData);
+		Button closeBtn = new Button(dialogShell, SWT.PUSH);
+		closeBtn.setText("Close");
+		closeBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+		closeBtn.addSelectionListener(closeAdapter);
+		dialogShell.setSize(640, 480);
+	}
+
+}
+/**
+ * This file is part of JMameUI.
+ * 
+ * JMameUI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JMameUI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ */
+package jmameui.gui.swt;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+
+import jmameui.gui.swt.preferences.PreferencesShell;
+import jmameui.mame.GuiControls;
+import jmameui.mame.MameRom;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.ModifyEvent;
+import org.eclipse.swt.events.ModifyListener;
+import org.eclipse.swt.events.MouseAdapter;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.SelectionListener;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.Menu;
+import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.widgets.TabItem;
+import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableColumn;
+import org.eclipse.swt.widgets.TableItem;
+import org.eclipse.swt.widgets.Text;
+import org.eclipse.swt.widgets.ToolBar;
+import org.eclipse.swt.widgets.ToolItem;
+
+public abstract class SWTJMameUI {
+
+	Shell shell;
+	GuiControls gCon = new GuiControls();
+	Table goodTable;
+	Table favTable;
+	Table searchTable;
+	Button launchButton;
+	String currRomset = "";
+	TabFolder tabs;
+	Text searchField;
+	Label statusLabel;
+	MenuItem addToFav;
+	Image favImg = loadImage("emblem-favorite.png");
+	Image notFavImg = loadImage("emblem-not-favorite.png");
+	private MameTableSort mts = new MameTableSort();
+	SelectionAdapter exitAdapter = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent e) {
+			shell.getDisplay().dispose();
+			System.exit(0);
+		}
+	};
+
+	MouseAdapter tableDoubleClicked = new MouseAdapter() {
+		public void mouseDoubleClick(MouseEvent e) {
+			if (!currRomset.equals("")) {
+				gCon.runGame(currRomset);
+			}
+		}
+	};
+
+	SelectionAdapter launchBtnListener = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			if (!currRomset.equals("")) {
+				gCon.runGame(currRomset);
+			}
+		}
+	};
+
+	SelectionAdapter rebuildBtnListener = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			buildDB(true);
+		}
+	};
+
+	SelectionAdapter TableSListener = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			if (goodTable.isVisible()) {
+				currRomset = goodTable.getSelection()[0].getText();
+				deselectTableIndexes(favTable, searchTable);
+			} else if (favTable.isVisible()) {
+				currRomset = favTable.getSelection()[0].getText();
+				deselectTableIndexes(goodTable, searchTable);
+			} else if (searchTable.isVisible()) {
+				currRomset = searchTable.getSelection()[0].getText();
+				deselectTableIndexes(goodTable, favTable);
+			}
+
+			if (gCon.getRom(currRomset).isFavourite()) {
+				addToFav.setText("Remove " + currRomset + " from favourites");
+			} else {
+				addToFav.setText("Add " + currRomset + " to favourites");
+
+			}
+		}
+	};
+
+	SelectionAdapter helpAdapter = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			new HelpDialog(shell);
+		}
+	};
+
+	SelectionAdapter tabChangeListener = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			if (tabs.getSelectionIndex() == 2 && searchField != null) {
+				searchField.setVisible(true);
+			} else {
+				searchField.setVisible(false);
+			}
+		}
+	};
+
+	ModifyListener searchListener = new ModifyListener() {
+		public void modifyText(ModifyEvent e) {
+			searchTable.removeAll();
+
+			for (MameRom i : gCon.getRomSet()) {
+				if (searchRoms(i)) {
+					addToTable(searchTable, i);
+				}
+			}
+			packTable(searchTable);
+		}
+	};
+
+	SelectionAdapter addFavListener = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent e) {
+			if (!currRomset.equals("") && gCon.addToFavourites(currRomset)) {
+				changeTableImg(goodTable, true);
+				changeTableImg(searchTable, true);
+				addToTable(favTable, gCon.getRom(currRomset));
+			} else {
+				changeTableImg(goodTable, false);
+				changeTableImg(searchTable, false);
+				for (int i = 0; i < favTable.getItemCount(); i++) {
+					if (favTable.getItem(i).getText().equals(currRomset)) {
+						favTable.remove(i);
+					}
+				}
+			}
+		}
+	};
+
+	SelectionAdapter aboutDialogAdapter = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			new AboutDialog(shell);
+		}
+	};
+
+	SelectionAdapter viewUnavailRomsets = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			viewBadRomsets();
+		}
+	};
+
+	SelectionAdapter viewPrefListener = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			new PreferencesShell(shell, SWTJMameUI.this);
+		};
+	};
+
+	SelectionAdapter addRomAdapter = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			new MameAddRom(shell, gCon);
+		};
+	};
+
+	SelectionAdapter viewLogatapet = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			new ViewLogs(shell, gCon);
+		};
+	};
+
+	ArrayList<MameRom> roms;
+	Listener sortListener = new Listener() {
+		public void handleEvent(Event e) {
+			TableColumn tablecol = (TableColumn) e.widget;
+			Table table = tablecol.getParent();
+			String colName = tablecol.getText();
+
+			for (String i : gCon.getTableColumnsNames()) {
+				if (colName.equals(i)) {
+					sortRoms(table, i);
+				}
+			}
+
+			table.removeAll();
+			for (MameRom mr : roms) {
+				if (table == favTable && !mr.isFavourite()) {
+					continue;
+				} else if (table == searchTable && !searchRoms(mr)) {
+					continue;
+				}
+				addToTable(table, mr);
+			}
+			packTable(table);
+		}
+	};
+
+	public boolean searchRoms(MameRom m) {
+		String text = searchField.getText();
+		if (text.equals("")) {
+			return false;
+		}
+
+		gCon.refreshMainSettings();
+		HashMap<String, String> ops = gCon.getSearchOptions();
+		for (String i : gCon.getTableColumnsNames()) {
+			if (Boolean.parseBoolean(ops.get(i.toLowerCase().replace(" ", "_")
+					+ "_search"))) {
+				if (gCon.getMameRomOption(i, m).toLowerCase().contains(text)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	public void sortRoms(Table table, String colName) {
+		if (table.getSortDirection() == SWT.UP) {
+			Collections.sort(roms, getComparator(colName, true));
+			table.setSortDirection(SWT.DOWN);
+		} else {
+			Collections.sort(roms, getComparator(colName, false));
+			table.setSortDirection(SWT.UP);
+		}
+	}
+
+	public Comparator<MameRom> getComparator(String colName, boolean revSort) {
+		mts.setColumnName(colName);
+		if (revSort) {
+			return mts.getReverseSort();
+		}
+		return mts.getForwardSort();
+	}
+
+	public abstract void initUI();
+
+	public abstract void initMenuAndToolbar();
+
+	public abstract void buildDB(final boolean forceRebuild);
+
+	public abstract void viewBadRomsets();
+
+	public MenuItem createMenuItem(Menu menu, String text, String imgName,
+			SelectionAdapter sa) {
+		MenuItem tmp = new MenuItem(menu, SWT.PUSH);
+		tmp.setText(text);
+		tmp.setImage(loadImage(imgName));
+		tmp.addSelectionListener(sa);
+		return tmp;
+	}
+
+	public Menu createMenu(String text) {
+		Menu tmpMenu = new Menu(shell, SWT.DROP_DOWN);
+		MenuItem casMenu = new MenuItem(shell.getMenuBar(), SWT.CASCADE);
+		casMenu.setText(text);
+		casMenu.setMenu(tmpMenu);
+		return tmpMenu;
+	}
+
+	public void addMenuItemToToolBar(MenuItem action, ToolBar tb,
+			SelectionListener sl) {
+		ToolItem toolItem = new ToolItem(tb, SWT.PUSH);
+		toolItem.setImage(action.getImage());
+		toolItem.addSelectionListener(sl);
+	}
+
+	public Table createTable(TabItem control) {
+
+		Table tmp = new Table(tabs, SWT.MULTI | SWT.BORDER | SWT.FULL_SELECTION);
+		tmp.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
+		tmp.setHeaderVisible(true);
+		tmp.setLinesVisible(true);
+		control.setControl(tmp);
+		for (int i = 0; i < gCon.getTableColumnsNames().length; i++) {
+			TableColumn tc1 = new TableColumn(tmp, SWT.None);
+			tc1.addListener(SWT.Selection, sortListener);
+			tc1.setText(gCon.getTableColumnsNames()[i]);
+			tc1.pack();
+		}
+
+		tmp.addMouseListener(tableDoubleClicked);
+		tmp.addSelectionListener(TableSListener);
+		return tmp;
+	}
+
+	public Image loadImage(String fileName) {
+		return new Image(Display.getDefault(), this.getClass().getClassLoader()
+				.getResourceAsStream("jmameui/gui/icons/" + fileName));
+
+	}
+
+	public static Image loadAImage(String fileName) {
+		return new Image(Display.getDefault(), SWTJMameUI.class
+				.getClassLoader().getResourceAsStream(
+						"jmameui/gui/icons/" + fileName));
+
+	}
+
+	public void deselectTableIndexes(Table... t) {
+		for (Table i : t) {
+			i.deselectAll();
+		}
+	}
+
+	public void changeTableImg(Table table, boolean favadded) {
+		for (TableItem i : table.getItems()) {
+			if (i.getText().equals(currRomset)) {
+				Image tmpImg = (favadded) ? favImg : notFavImg;
+				i.setImage(tmpImg);
+			}
+		}
+	}
+
+	public void addToTable(Table table, MameRom mr) {
+		String[] tmp = { mr.getName(), mr.getDescription(),
+				mr.getManufacturer(), mr.getYear(), mr.getEmuState(),
+				mr.getMameVersion(), mr.getGenre(), mr.getClone() };
+		Image tmpImg = (mr.isFavourite()) ? favImg : notFavImg;
+		TableItem item = new TableItem(table, SWT.NONE);
+		item.setImage(0, tmpImg);
+		item.setText(tmp);
+	}
+
+	public void packAllTables() {
+		packTable(goodTable, favTable, searchTable);
+	}
+
+	public void packTable(Table... table) {
+		HashMap<String, String> ops = gCon.getTableOptions();
+		for (Table i : table) {
+			for (TableColumn j : i.getColumns()) {
+				j.pack();
+				if (!Boolean.parseBoolean(ops.get(j.getText().toLowerCase()
+						.replace(" ", "_")
+						+ "_column_visible"))) {
+					j.setWidth(0);
+					j.setResizable(false);
+				}
+			}
+		}
+	}
+
+	public Shell getShell() {
+		return shell;
+	}
+
+	public GuiControls getgCon() {
+		return gCon;
+	}
+}
+/*
+ * This file is part of JMameUI.
+ * 
+ * JMameUI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JMameUI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package jmameui.gui.swt;
+
+import java.io.File;
+
+import jmameui.mame.GuiControls;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Shell;
+
+public class MameNotFound {
+
+	Label iconLabel;
+	Label textLabel;
+	Button ignoreBtn;
+	Button alwaysignCkBox;
+	Button browseBtn;
+	Shell shell;
+	GuiControls gCon;
+
+	private SelectionAdapter ignoreBtnListener = new SelectionAdapter() {
+		public void widgetSelected(org.eclipse.swt.events.SelectionEvent arg0) {
+			boolean b = alwaysignCkBox.getSelection();
+			if (b) {
+				gCon.changeSettingsFile("use_system_mame", "false");
+			}
+			shell.dispose();
+		}
+	};
+	private SelectionAdapter addMameListener = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			FileDialog dialog = new FileDialog(shell);
+			dialog.setText("Choose Mame executable");
+			dialog.setFilterPath(System.getProperty("user.home"));
+			String newMame = dialog.open();
+			if (newMame != null) {
+				gCon.addMameExecutable(new File(newMame),true);
+				shell.dispose();
+			}
+		}
+	};
+
+	public MameNotFound(JMameUI mUi) {
+		shell = new Shell(mUi.getShell(), SWT.RESIZE);
+		gCon = mUi.getgCon();
+		shell.setLayout(new GridLayout(3, false));
+		initUI();
+	}
+
+	private void initUI() {
+		iconLabel = new Label(shell, SWT.None);
+		iconLabel.setImage(shell.getDisplay().getSystemImage(SWT.ICON_WARNING));
+		iconLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, false));
+
+		textLabel = new Label(shell, SWT.NONE);
+		textLabel
+				.setText("System Mame not found!\nClick browse to locate Mame\nOr ignore");
+		textLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 2,
+				1));
+
+		ignoreBtn = new Button(shell, SWT.PUSH);
+		ignoreBtn.setText("Ignore");
+		ignoreBtn.addSelectionListener(ignoreBtnListener);
+		ignoreBtn.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
+				false));
+
+		alwaysignCkBox = new Button(shell, SWT.CHECK);
+		alwaysignCkBox.setText("Always Ignore");
+		alwaysignCkBox.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER,
+				false, false));
+
+		browseBtn = new Button(shell, SWT.PUSH);
+		browseBtn.setText("Browse");
+		browseBtn.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false,
+				false));
+		browseBtn.addSelectionListener(addMameListener);
+
+		shell.pack();
+		shell.open();
+	}
+}
+package jmameui.gui.swt;
+
+import java.util.Comparator;
+
+import jmameui.mame.MameRom;
+
+public class MameTableSort {
+	private String columnName = "";
+	
+	private Comparator<MameRom> forwardSort = new Comparator<MameRom>() {
+		@Override
+		public int compare(MameRom o1, MameRom o2) {
+			String s1 = getString(o1);
+			String s2 = getString(o2);
+			
+			return s1.compareTo(s2);
+		}
+	};
+	private Comparator<MameRom> reverseSort = new Comparator<MameRom>() {
+		@Override
+		public int compare(MameRom o1, MameRom o2) {
+			String s1 = getString(o1);
+			String s2 = getString(o2);
+			
+			return s2.compareTo(s1);
+		}
+	};
+
+	private String getString(MameRom m) {
+		if (columnName.equals("Game Name")) {
+			return m.getName();
+		} else if (columnName.equals("Description")) {
+			return m.getDescription();
+		} else if (columnName.equals("Manufacturer")) {
+			return m.getManufacturer();
+		} else if (columnName.equals("Year")) {
+			return m.getYear();
+		} else if (columnName.equals("Emulation state")) {
+			return m.getEmuState();
+		} else if (columnName.equals("Mame version")) {
+			return m.getMameVersion();
+		} else if (columnName.equals("Genre")) {
+			return m.getGenre();
+		}else if (columnName.equals("Clone Of")) {
+			return m.getClone();
+		}
+		return "";
+	}
+
+	public Comparator<MameRom> getForwardSort() {
+		return forwardSort;
+	}
+
+	public Comparator<MameRom> getReverseSort() {
+		return reverseSort;
+	}
+
+	public void setColumnName(String columnName) {
+		this.columnName = columnName;
+	}
+}
+package jmameui.mame;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+
+public class MameExecutable {
+
+    private String path = "";
+    private String version = "";
+    private boolean systemMame = false;
+    private String iniPath = "";
+    private File rootDir = null;
+    private File iniFile = null;
+    private File mameExec = null;
+
+    public MameExecutable(String path, String version, String romPath,
+	    boolean system) {
+	this.path = path;
+	this.version = version;
+	this.systemMame = system;
+	if (system) {
+	    this.version += " (System)";
+	} else {
+	    initPaths(romPath);
+	}
+    }
+
+    @Override
+    public int hashCode() {
+	final int prime = 31;
+	int result = 1;
+	result = prime * result + ((path == null) ? 0 : path.hashCode());
+	return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+	if (this == obj)
+	    return true;
+	if (obj == null)
+	    return false;
+	if (getClass() != obj.getClass())
+	    return false;
+	MameExecutable other = (MameExecutable) obj;
+	if (path == null) {
+	    if (other.path != null)
+		return false;
+	} else if (!path.equals(other.path))
+	    return false;
+	return true;
+    };
+
+    public void initPaths(String romPath) {
+	rootDir = new File(path).getParentFile();
+	iniFile = new File(rootDir, "mame.ini");
+	mameExec = new File(path);
+	iniPath = rootDir.getPath();
+	File[] dirs = new File[] { new File(rootDir, "cfg"),
+		new File(rootDir, "nvram"), new File(rootDir, "memcard"),
+		new File(rootDir, "inp"), new File(rootDir, "states"),
+		new File(rootDir, "snap"), new File(rootDir, "diff"),
+		new File(rootDir, "comments") };
+
+	for (File i : dirs) {
+	    if (!i.isDirectory()) {
+		i.mkdir();
+	    }
+	}
+
+	if (!iniFile.exists()) {
+	    FileIO.writeTofile(FileIO.getProcessOutput(path + " -sc", false),
+		    iniFile, false);
+	    FileIO.changeMameIniValue(this, "inipath", rootDir.getPath());
+	    FileIO.changeMameIniValue(this, "cfg_directory", rootDir.getPath()
+		    + "/cfg");
+	    FileIO.changeMameIniValue(this, "nvram_directory",
+		    rootDir.getPath() + "/nvram");
+	    FileIO.changeMameIniValue(this, "memcard_directory",
+		    rootDir.getPath() + "/memcard");
+	    FileIO.changeMameIniValue(this, "input_directory",
+		    rootDir.getPath() + "/inp");
+	    FileIO.changeMameIniValue(this, "state_directory",
+		    rootDir.getPath() + "/states");
+	    FileIO.changeMameIniValue(this, "snapshot_directory",
+		    rootDir.getPath() + "/snap");
+	    FileIO.changeMameIniValue(this, "diff_directory", rootDir.getPath()
+		    + "/diff");
+	    FileIO.changeMameIniValue(this, "comment_directory",
+		    rootDir.getPath() + "/comments");
+	    FileIO.changeMameIniValue(this, "rompath", romPath);
+	}
+    }
+
+    public void delete() {
+	iniFile.delete();
+	mameExec.delete();
+	for (File i : rootDir.listFiles()) {
+	    if (i.isDirectory()) {
+		for (File j : i.listFiles()) {
+		    j.delete();
+		}
+	    }
+	    i.delete();
+	}
+	rootDir.delete();
+    }
+
+    public ArrayList<String> getRomPath() {
+	String line = FileIO.getMameIniValue(this, "rompath");
+	ArrayList<String> out = new ArrayList<String>();
+	line = line.replace("$HOME", System.getProperty("user.home"));
+
+	if (line.contains(";")) {
+	    out.addAll(Arrays.asList(line.split(";")));
+	} else {
+	    out.add(line);
+	}
+	return out;
+    }
+
+    public String getPath() {
+	return path;
+    }
+
+    public void setPath(String path) {
+	this.path = path;
+    }
+
+    public String getVersion() {
+	return version;
+    }
+
+    public void setVersion(String version) {
+	this.version = version;
+    }
+
+    public boolean isSystemMame() {
+	return systemMame;
+    }
+
+    public void setSystemMame(boolean system) {
+	this.systemMame = system;
+    }
+
+    public String getIniPath() {
+	return iniPath;
+    }
+
+    public void setIniPath(String iniPath) {
+	this.iniPath = iniPath;
+    }
+
+    public File getRootDir() {
+	return rootDir;
+    }
+
+    public void setRootDir(File rootDir) {
+	this.rootDir = rootDir;
+    }
+
+    public File getIniFile() {
+	return iniFile;
+    }
+
+    public void setIniFile(File iniFile) {
+	this.iniFile = iniFile;
+    }
+
+}
+/*
+ * This file is part of JMameUI.
+ * 
+ * JMameUI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JMameUI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package jmameui.mame;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.TreeSet;
+
+public class GuiControls {
+	private String home = System.getProperty("user.home");
+	private File mainDir = new File(home, ".jmameui");
+	private File logDir = new File(mainDir, "logs");
+	private File mameDir = new File(mainDir, "mame");
+	private File goodGames = new File(mainDir, "goodgames");
+	private File bestGames = new File(mainDir, "bestgames");
+	private File badGames = new File(mainDir, "badgames");
+	private File settings = new File(mainDir, "Settings");
+	private File gameDir = new File(mainDir, "game");
+	private File favourites = new File(mainDir, "Favorites");
+	private File[] directorys = { mainDir, logDir, mameDir, gameDir };
+	private File[] files = { goodGames, bestGames, badGames, favourites,
+			settings };
+	private HashMap<String, String> mainSettings = null;
+	private ArrayList<MameExecutable> mameExecutables = new ArrayList<MameExecutable>();
+	private String romPath = "";
+	private TreeSet<MameRom> romSet = new TreeSet<MameRom>();
+
+	private Comparator<MameExecutable> olderPref = new Comparator<MameExecutable>() {
+		public int compare(MameExecutable o1, MameExecutable o2) {
+			return o1.getVersion().compareTo(o2.getVersion());
+		}
+	};
+
+	private Comparator<MameExecutable> newerPref = new Comparator<MameExecutable>() {
+		public int compare(MameExecutable o1, MameExecutable o2) {
+			return o2.getVersion().compareTo(o1.getVersion());
+		}
+	};
+
+	private Comparator<MameExecutable> SystemPref = new Comparator<MameExecutable>() {
+		public int compare(MameExecutable o1, MameExecutable o2) {
+			return new Boolean(o2.isSystemMame()).compareTo(new Boolean(o1
+					.isSystemMame()));
+		}
+	};
+
+	public GuiControls() {
+		FileIO.setLogDir(logDir);
+	}
+
+	/**
+	 * Runs a mame game
+	 * <p>
+	 * Runs mame if romName is in the database, writes any output from mame or
+	 * errors to the log file
+	 * 
+	 * @param romName
+	 *            the romset to be run
+	 */
+	public void runGame(String romName) {
+		MameRom m = getRom(romName);
+		MameExecutable me = getMameExecutable(m.getMamePath());
+		String cmd = me.getPath() + " " + m.getName() + " -inipath "
+				+ me.getIniPath();
+
+		ArrayList<String> tmp = FileIO.getProcessOutput(cmd, true);
+		if (tmp != null) {
+			tmp.add(cmd);
+			FileIO.writeToLogFile(tmp);
+		}
+	}
+
+	/**
+	 * Gets a rom from the collection
+	 * 
+	 * @param name
+	 *            The name of the rom to get
+	 * @return returns a MameRom if found otherwise null
+	 */
+	public MameRom getRom(String name) {
+		for (MameRom i : romSet) {
+			if (i.getName().equals(name))
+				return i;
+		}
+		return null;
+	}
+
+	/**
+	 * Copy a mame executable to the mamedir
+	 * 
+	 * @param mameExec
+	 *            mame exec to be copied
+	 */
+	public void addMameExecutable(File mameExec, boolean sysMame) {
+		try {
+			if (sysMame) {
+				setSystemMameInfo(mameExec.getPath());
+				changeSettingsFile("system_mame_path", mameExec.getPath());
+				changeSettingsFile("system_mame_version",
+						getMameVersion(mameExec.getPath()));
+			} else {
+				String version = getMameVersion(mameExec.getPath());
+				File dir = new File(mameDir, version);
+
+				FileIO.copyFile(mameExec, dir, true);
+
+				File nMame = new File(dir, "mame");
+				File tmp = new File(dir, mameExec.getName());
+				tmp.renameTo(nMame);
+
+				mameExecutables.add(new MameExecutable(nMame.getPath(),
+						version, romPath, false));
+			}
+
+		} catch (IOException e) {
+			FileIO.writeToLogFile(e);
+		}
+	}
+
+	/**
+	 * remove a mame executable from the mamedir
+	 * 
+	 * @param mameExec
+	 *            mame exec to be removed
+	 */
+	public void removeMameExecutable(File mameExec) {
+		MameExecutable me = getMameExecutable(mameExec.getAbsolutePath());
+		if (me != null && !me.isSystemMame()) {
+			me.delete();
+			mameExecutables.remove(me);
+		}
+	}
+
+	/**
+	 * Runs mame -verifyroms and outputs the information to three
+	 * files(good/best/bad) in the JMameUI root directory
+	 */
+	private void buildGameDatabase() {
+		ArrayList<String> goodRoms = new ArrayList<String>();
+		ArrayList<String> bestRoms = new ArrayList<String>();
+		ArrayList<String> badRoms = new ArrayList<String>();
+		TreeSet<String> tmp = new TreeSet<String>();
+
+		sortMameExecs();
+
+		for (MameExecutable i : mameExecutables) {
+			badRoms.add("### Mame Executable = " + i.getPath());
+			ArrayList<String> lines = FileIO.getProcessOutput(i.getPath()
+					+ " -verifyroms -inipath " + i.getIniPath(), false);
+			for (String line : lines) {
+				if (line.contains("good") && tmp.add(line)) {
+					goodRoms.add(line + "," + i.getPath());
+				} else if (line.contains("best") && tmp.add(line)) {
+					bestRoms.add(line + "," + i.getPath());
+				} else if (tmp.add(line.replace(" ", ""))
+						&& (!line.contains("best") && !line.contains("good"))) {
+					badRoms.add(line);
+				}
+
+			}
+		}
+		FileIO.writeTofile(goodRoms, goodGames, false);
+		FileIO.writeTofile(bestRoms, bestGames, false);
+		FileIO.writeTofile(badRoms, badGames, false);
+	}
+
+	/**
+	 * Build the romset database and create MameRom Collection
+	 * 
+	 * @param force
+	 *            rebuild the database
+	 */
+	public void buildDB(boolean force) {
+		try {
+			if (force || goodGames.length() == 0) {
+				buildGameDatabase();
+			}
+			romSet = createMameRoms();
+		} catch (IOException e) {
+			FileIO.writeToLogFile(e);
+		}
+	}
+
+	/**
+	 * creates mameroms reads information from the game files(creates file if it
+	 * doesn't exist) and sets the mamerom with this information
+	 * 
+	 * @return TreeSet containing romsets which are either good or best
+	 *         available
+	 */
+	private TreeSet<MameRom> createMameRoms() throws IOException {
+		TreeSet<MameRom> out = new TreeSet<MameRom>();
+		ArrayList<String> favs = FileIO.readFile(favourites);
+		ArrayList<String> lines = FileIO.readFile(goodGames);
+		ArrayList<String> bestLines = FileIO.readFile(bestGames);
+
+		HashMap<String, String> clones = getClones();
+		HashMap<String, String> genres = FileIO.getSettingFileLines(getClass()
+				.getClassLoader()
+				.getResourceAsStream("jmameui/mame/mamegenres"));
+
+		lines.addAll(bestLines);
+
+		for (String line : lines) {
+			String gameName = line.split(" ")[1].split(" ")[0];
+			String mamePath = line.split(",")[1];
+			MameRom m = (bestLines.contains(line)) ? new MameRom(gameName,
+					mamePath, false) : new MameRom(gameName, mamePath, true);
+
+			File file = new File(gameDir + "/" + m.getName());
+
+			if (!file.exists()) {
+				ArrayList<String> tmp = FileIO.getProcessOutput(mamePath
+						+ " -lx " + gameName, false);
+				if (tmp != null) {
+					FileIO.createGameFiles(tmp, m, file);
+				} else {
+					file.delete();
+					FileIO.removeLineFromFile(bestGames, line);
+					continue;
+				}
+			}
+
+			HashMap<String, String> romInf = FileIO.getSettingFileLines(file);
+			String tmp = null;
+			m.setGenre(((tmp = genres.get(gameName)) != null) ? tmp : "????");
+			m.setClone(((tmp = clones.get(gameName)) != null) ? tmp
+					: "Original");
+			m.setMameVersion(getMameExecutable(mamePath).getVersion());
+			m.setYear(romInf.get("year"));
+			m.setDescription(romInf.get("description"));
+			m.setManufacturer(romInf.get("manufacturer"));
+			m.setEmuState(romInf.get("emulation_state"));
+			if (favs.contains(m.getName())) {
+				m.setFavourite(true);
+			}
+			out.add(m);
+		}
+		return out;
+	}
+
+	/**
+	 * Add a rom name to the favourites file
+	 * <p>
+	 * Removes rom name from the favourites file if it's already in there
+	 * 
+	 * @param romName
+	 *            name of rom to check
+	 * @return true if added otherwise false
+	 */
+	public boolean addToFavourites(String romName) {
+		boolean added = false;
+		if (FileIO.readFile(favourites, romName) == true) {
+			FileIO.removeLineFromFile(favourites, romName);
+			getRom(romName).setFavourite(false);
+		} else {
+			FileIO.writeTofile(romName, favourites);
+			added = true;
+			getRom(romName).setFavourite(true);
+		}
+		return added;
+	}
+
+	public HashMap<String, String> getClones() {
+		HashMap<String, String> out = new HashMap<String, String>();
+
+		Collections.sort(mameExecutables, newerPref);
+		ArrayList<String> clones = FileIO.getProcessOutput(
+				mameExecutables.get(0).getPath() + " -lc", false);
+
+		for (String i : clones) {
+			String[] tmp = i.split(" ");
+			String val = null;
+			for (int j = 1; j < tmp.length; j++) {
+				val = tmp[j];
+				if (!val.equals("")) {
+					break;
+				}
+			}
+			out.put(tmp[0], val);
+		}
+
+		return out;
+	}
+
+	public void sortMameExecs() {
+		String sortSet = FileIO.readSettingsFile(settings, "mame_sort");
+
+		if (sortSet.equals("system"))
+			Collections.sort(mameExecutables, SystemPref);
+		else if (sortSet.equals("older"))
+			Collections.sort(mameExecutables, olderPref);
+		else if (sortSet.equals("newer"))
+			Collections.sort(mameExecutables, newerPref);
+	}
+
+	/**
+	 * Gets the contents of the favourites file
+	 * 
+	 * @return arraylist contains mameroms of the favourites file
+	 */
+	public ArrayList<MameRom> getFavourites() {
+		ArrayList<MameRom> out = new ArrayList<MameRom>();
+		for (String i : FileIO.readFile(favourites)) {
+			MameRom j = getRom(i);
+			if (j != null) {
+				out.add(j);
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * Create all files for JMameUI
+	 */
+	public void createFiles() throws IOException {
+		for (File i : directorys) {
+			if (!i.isDirectory())
+				i.mkdir();
+		}
+
+		for (File i : files) {
+			if (!i.exists()) {
+				i.createNewFile();
+			}
+		}
+
+		HashMap<String, String> setfile = new HashMap<String, String>();
+		setfile.put("system_mame_version", "null");
+		setfile.put("system_mame_path", "null");
+		setfile.put("use_system_mame", "true");
+		setfile.put("mame_sort", "system");
+		for (String i : getTableColumnsNames()) {
+			setfile.put(i.toLowerCase().replaceAll(" ", "_")
+					+ "_column_visible", "true");
+			setfile.put(i.toLowerCase().replaceAll(" ", "_") + "_search",
+					"true");
+		}
+
+		mainSettings = FileIO.getSettingFileLines(settings);
+		for (String i : setfile.keySet()) {
+			if (!mainSettings.containsKey(i)) {
+				mainSettings.put(i, setfile.get(i));
+			}
+		}
+		FileIO.createSettingsFile(settings, mainSettings);
+	}
+
+	/**
+	 * Change a property in the main settings file
+	 * 
+	 * @param key
+	 *            the property to change
+	 * @param value
+	 *            the new value for the property
+	 */
+	public void changeSettingsFile(String key, String value) {
+		try {
+			FileIO.changeConfFile(settings, key, value);
+		} catch (IOException e) {
+			FileIO.writeToLogFile(e);
+		}
+	}
+
+	/**
+	 * Read a setting in the main settings file
+	 * 
+	 * @param key
+	 *            the property to get the value for
+	 * @return the value of the property if it exists otherwise null
+	 */
+	public String readSettingsFile(String key) {
+		return FileIO.readSettingsFile(settings, key);
+	}
+
+	/**
+	 * Get the output from mame about the unavailable romsets
+	 * 
+	 * @return ArrayList contain the information about unavailable romsets
+	 */
+	public ArrayList<String> getUnavailableRomText() {
+		return FileIO.readFile(badGames);
+	}
+
+	/**
+	 * Attempts to find the system Mame Executable
+	 * 
+	 * @return true if mame found
+	 */
+	public Boolean start() {
+		Boolean mameFound = false;
+		try {
+			createFiles();
+			boolean b = Boolean.valueOf(FileIO.readSettingsFile(settings,
+					"use_system_mame"));
+			String systemPath = FileIO.readSettingsFile(settings,
+					"system_mame_path");
+			if (b && !systemPath.equals("null")) {
+				mameFound = true;
+				setSystemMameInfo(systemPath);
+			} else if (b && systemPath.equals("null")) {
+				systemPath = getSystemMameInfo();
+
+				if (systemPath != null) {
+					setSystemMameInfo(systemPath);
+					changeSettingsFile("system_mame_path", systemPath);
+					changeSettingsFile("system_mame_version",
+							getMameVersion(systemPath));
+					mameFound = true;
+				}
+			} else if (!b) {
+				return null;
+			}
+			for (File i : mameDir.listFiles()) {
+				if (i.isDirectory()) {
+					File me = new File(i, "mame");
+					mameExecutables.add(new MameExecutable(me.getPath(),
+							getMameVersion(me.getPath()), romPath, false));
+				}
+			}
+
+		} catch (IOException e) {
+			FileIO.writeToLogFile(e);
+		}
+		return mameFound;
+	}
+
+	/**
+	 * Get the version of Mame
+	 * 
+	 * @param path
+	 *            the location of the Mame executable
+	 * @return String of mame version
+	 */
+	public String getMameVersion(String path) {
+		String out = null;
+		try {
+			Process p = Runtime.getRuntime().exec(path + " -h");
+			BufferedReader br = new BufferedReader(new InputStreamReader(
+					p.getInputStream()));
+
+			String j = br.readLine();
+			
+			br.close();
+			if (j != null)
+				out = j.split(" ")[1].split(" ")[0];
+		} catch (IOException e) {
+			FileIO.writeToLogFile(e);
+		}
+		return out;
+	}
+
+	private void setSystemMameInfo(String path) {
+		File iniFile = new File(mameDir, "mame.ini");
+		MameExecutable me = new MameExecutable(path, getMameVersion(path),
+				iniFile.getPath(), true);
+		me.setIniFile(iniFile);
+		me.setIniPath(iniFile.getPath().replace(iniFile.getName(), ""));
+		if (!iniFile.exists()) {
+			ArrayList<String> ini = FileIO.getProcessOutput(path + " -sc",
+					false);
+			romPath = getMameIniValue(ini, "rompath").replace("$HOME", home);
+			FileIO.writeTofile(ini, iniFile, false);
+		} else {
+			romPath = FileIO.getMameIniValue(me, "rompath");
+		}
+
+		mameExecutables.add(me);
+	}
+
+	public String getMameIniValue(ArrayList<String> ini, String key) {
+		boolean b = false;
+		for (String i : ini) {
+			if (i.startsWith(key + " ")) {
+				b = true;
+				String[] items = i.split(" ");
+				for (String j : items) {
+					if (!j.equals("") && !j.equals(key))
+						return j;
+				}
+			}
+		}
+		if (b) {
+			return "";
+		}
+		return null;
+	}
+
+	public void changeMameIniValue(ArrayList<String> ini, String key,
+			String newValue) {
+		for (String i : ini) {
+			if (i.startsWith(key + " ")) {
+				StringBuilder line = new StringBuilder(key);
+				while (line.length() < 26) {
+					line.append(" ");
+				}
+				line.append(newValue);
+				ini.set(ini.indexOf(i), line.toString());
+			}
+		}
+	}
+
+	private String getSystemMameInfo(String... path) throws IOException {
+		String[] tmp = { "sdlmame", "mame" };
+		if (path.length == 1) {
+			tmp = new String[] { path[0] };
+		}
+
+		String out = null;
+		for (String i : tmp) {
+			Process p = Runtime.getRuntime().exec("which " + i);
+			BufferedReader br = new BufferedReader(new InputStreamReader(
+					p.getInputStream()));
+
+			String j = br.readLine();
+			if (j != null && !j.contains("which"))
+				out = j;
+			br.close();
+		}
+		return out;
+	}
+
+	public void refreshMainSettings() {
+		mainSettings = FileIO.getSettingFileLines(settings);
+	}
+
+	public HashMap<String, String> getTableOptions() {
+		HashMap<String, String> out = new HashMap<String, String>();
+
+		for (String i : getTableColumnsNames()) {
+			String op = i.toLowerCase().replaceAll(" ", "_")
+					+ "_column_visible";
+			if (mainSettings.get(op) != null) {
+				out.put(op, mainSettings.get(op));
+			}
+		}
+		return out;
+	}
+
+	public HashMap<String, String> getSearchOptions() {
+		HashMap<String, String> out = new HashMap<String, String>();
+		
+		for (String i : getTableColumnsNames()) {
+			String op = i.toLowerCase().replaceAll(" ", "_") + "_search";
+			if (mainSettings.get(op) != null) {
+				out.put(op, mainSettings.get(op));
+			}
+		}
+		return out;
+	}
+
+	public File getMainDir() {
+		return mainDir;
+	}
+
+	public File getLogDir() {
+		return logDir;
+	}
+
+	public File getMameDir() {
+		return mameDir;
+	}
+
+	public File getGoodGames() {
+		return goodGames;
+	}
+
+	public File getBestGames() {
+		return bestGames;
+	}
+
+	public File getBadGames() {
+		return badGames;
+	}
+
+	public File getSettings() {
+		return settings;
+	}
+
+	public File getGameDir() {
+		return gameDir;
+	}
+
+	public File getFavouritesFile() {
+		return favourites;
+	}
+
+	public String getRomPath() {
+		return romPath;
+	}
+
+	public HashMap<String, String> getMainSettings() {
+		return mainSettings;
+	}
+
+	public ArrayList<MameExecutable> getMameExecutables() {
+		return mameExecutables;
+	}
+
+	public String[] getTableColumnsNames() {
+		return new String[] { "Game Name", "Description", "Manufacturer",
+				"Year", "Emulation State", "Mame Version", "Genre", "Clone Of" };
+	}
+
+	public String getMameRomOption(String op, MameRom m) {
+		if (op == null || m == null) {
+			return "";
+		}
+
+		String[] cols = getTableColumnsNames();
+		if (op.equals(cols[0])) {
+			return m.getName();
+		} else if (op.equals(cols[1])) {
+			return m.getDescription();
+		} else if (op.equals(cols[2])) {
+			return m.getManufacturer();
+		} else if (op.equals(cols[3])) {
+			return m.getYear();
+		} else if (op.equals(cols[4])) {
+			return m.getEmuState();
+		} else if (op.equals(cols[5])) {
+			return m.getMameVersion();
+		} else if (op.equals(cols[6])) {
+			return m.getGenre();
+		} else if (op.equals(cols[7])) {
+			return m.getClone();
+		}
+
+		return "";
+	}
+
+	public MameExecutable getSystemMame() {
+		for (MameExecutable i : mameExecutables) {
+			if (i.isSystemMame()) {
+				return i;
+			}
+		}
+		return null;
+	}
+
+	public MameExecutable getMameExecutable(String path) {
+		for (MameExecutable i : mameExecutables) {
+			if (i.getPath().equals(path)) {
+				return i;
+			}
+		}
+		return null;
+	}
+
+	public TreeSet<MameRom> getRomSet() {
+		return romSet;
+	}
+
+	public int getGoodRomsetCount() {
+		return romSet.size();
+	}
+}/*
+ * This file is part of JMameUI.
+ * 
+ * JMameUI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JMameUI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package jmameui.mame;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Properties;
+import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import jmameui.mame.MameExecutable;
+import jmameui.mame.MameRom;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
+
+public class FileIO {
+
+	private static File logDir = null;
+
+	/**
+	 * Writes an Exception to the log file
+	 * <p>
+	 * writes an Exception to the file with a timestamp, also prints stacktrace
+	 */
+	public static void writeToLogFile(Exception e) {
+		e.printStackTrace();
+		ArrayList<String> tmp = new ArrayList<String>();
+		StringWriter sw = new StringWriter();
+		e.printStackTrace(new PrintWriter(sw));
+
+		tmp.addAll(Arrays.asList(getLineSeparator(), getTime(), sw.toString(),
+				System.getProperty("java.vm.vendor"),
+				System.getProperty("java.runtime.version"),
+				System.getProperty("os.arch"), System.getProperty("os.name"),
+				System.getProperty("os.version")));
+		writeTofile(tmp, getLogFile(), true);
+	}
+
+	/**
+	 * Writes an Collection to the log file
+	 * <p>
+	 * writes an Collection to the file with a timestamp
+	 */
+	public static void writeToLogFile(Collection<? extends String> lines) {
+		ArrayList<String> tmp = new ArrayList<String>();
+		tmp.addAll(Arrays.asList(getLineSeparator(), getTime(), "INFO:"));
+		tmp.addAll(lines);
+		writeTofile(tmp, getLogFile(), true);
+	}
+
+	/**
+	 * Gets todays log file
+	 * 
+	 * @return a File named with todays date
+	 */
+	public static File getLogFile() {
+		SimpleDateFormat sdf1 = new SimpleDateFormat("dd-MM-yy");
+		String path = logDir + "/log "
+				+ sdf1.format(Calendar.getInstance().getTime());
+		return new File(path);
+	}
+
+	/**
+	 * Get a line separator
+	 * 
+	 * @return a String containing 100 hyphens
+	 */
+	public static String getLineSeparator() {
+		char[] c = new char[100];
+		Arrays.fill(c, '-');
+		return new String(c);
+	}
+
+	/**
+	 * Gets the current time
+	 * 
+	 * @return String of the current time formatted to h:mm:ss
+	 */
+	public static String getTime() {
+		SimpleDateFormat sdf = new SimpleDateFormat("h:mm:ss");
+		return sdf.format(Calendar.getInstance().getTime());
+	}
+
+	/**
+	 * Change a property in a settings file
+	 * 
+	 * @param file
+	 *            the file to change
+	 * @param key
+	 *            the option to change
+	 * @param newValue
+	 *            the new value for the option
+	 */
+	public static void changeConfFile(File file, String key, String newValue)
+			throws IOException {
+		FileInputStream in = new FileInputStream(file);
+		Properties props = new Properties();
+		props.load(in);
+		in.close();
+
+		FileOutputStream out = new FileOutputStream(file);
+		props.setProperty(key, newValue);
+		props.store(out, null);
+		out.close();
+	}
+
+	/**
+	 * Write a collection of String to a file
+	 * <P>
+	 * If file doesn't exist it creates a file, then writes the collection to it
+	 * 
+	 * @param lines
+	 *            A collection which extends String to be written to a file
+	 * @param file
+	 *            The file to write to if it doesn't exist it will be created
+	 * @param appendFile
+	 *            if true will append file
+	 */
+	public static void writeTofile(Collection<? extends String> lines,
+			File file, boolean appendFile) {
+		try {
+			if (!file.exists())
+				file.createNewFile();
+
+			PrintWriter pw = new PrintWriter(new BufferedWriter(new FileWriter(
+					file, appendFile)));
+			for (String i : lines) {
+				pw.println(i);
+			}
+			pw.close();
+		} catch (IOException e) {
+			writeToLogFile(e);
+		}
+	}
+
+	/**
+	 * Write a String to a file
+	 * <P>
+	 * If file doesn't exist it creates a file, then writes the String it
+	 * 
+	 * @param line
+	 *            String to be written to a file
+	 * @param file
+	 *            The file to write to if it doesn't exist it will be created
+	 */
+	public static void writeTofile(String line, File file) {
+		try {
+			if (!file.exists())
+				file.createNewFile();
+
+			PrintWriter pw = new PrintWriter(new BufferedWriter(new FileWriter(
+					file, true)));
+			pw.println(line);
+			pw.close();
+		} catch (IOException e) {
+			writeToLogFile(e);
+		}
+	}
+
+	/**
+	 * See if the line exists in a file
+	 * 
+	 * @param file
+	 *            the file to be read
+	 * @param find
+	 *            what to look for in the file
+	 * @return boolean true if the line exists
+	 */
+	public static boolean readFile(File file, String find) {
+		ArrayList<String> tmp = readFile(file);
+		for (String i : tmp) {
+			if (i.equals(find)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * get the contents of a file
+	 * 
+	 * @param file
+	 *            the file to be read
+	 * @return ArrayList containing the lines of the file
+	 */
+	public static ArrayList<String> readFile(File file) {
+		ArrayList<String> tmp = new ArrayList<String>();
+		try {
+			BufferedReader br = new BufferedReader(new FileReader(file));
+			String line = "";
+			while ((line = br.readLine()) != null)
+				tmp.add(line);
+			br.close();
+		} catch (IOException e) {
+			writeToLogFile(e);
+		}
+		return tmp;
+	}
+
+	public static ArrayList<String> readInputStream(InputStream is) {
+		ArrayList<String> out = new ArrayList<String>();
+		BufferedReader br = new BufferedReader(new InputStreamReader(is));
+		String line = "";
+		try {
+			while ((line = br.readLine()) != null) {
+				out.add(line);
+			}
+		} catch (IOException e) {
+			writeToLogFile(e);
+		} finally {
+			try {
+				br.close();
+			} catch (IOException e) {
+				writeToLogFile(e);
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * Removes the string argument from the specified file if there is an exact
+	 * match
+	 */
+	public static void removeLineFromFile(File file, String rm) {
+		try {
+			ArrayList<String> tmp = readFile(file);
+			BufferedWriter bw = new BufferedWriter(new FileWriter(file));
+			for (String i : tmp)
+				if (!i.equals(rm))
+					bw.write(i + "\n");
+
+			bw.flush();
+			bw.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+			writeToLogFile(e);
+		}
+	}
+
+	/**
+	 * gets the value from a settings file
+	 * 
+	 * @return String of option related to key arg otherwise null
+	 */
+	public static String readSettingsFile(File file, String key) {
+		Properties p = new Properties();
+		try {
+			FileInputStream fis = new FileInputStream(file);
+			p.load(fis);
+			fis.close();
+		} catch (IOException e) {
+			writeToLogFile(e);
+		}
+		return p.getProperty(key);
+	}
+
+	/**
+	 * Read in an entire settings file
+	 * 
+	 * @return HashMap in key value pairs
+	 */
+	public static HashMap<String, String> getSettingFileLines(File file) {
+		Properties p = new Properties();
+		try {
+			FileInputStream fis = new FileInputStream(file);
+			p.load(fis);
+
+			fis.close();
+		} catch (IOException e) {
+			writeToLogFile(e);
+		}
+		Set<Object> tmp = p.keySet();
+		HashMap<String, String> out = new HashMap<String, String>();
+		for (Object i : tmp) {
+			out.put(i.toString(), p.getProperty(i.toString()));
+		}
+		return out;
+	}
+
+	/**
+	 * Read in an entire settings file
+	 * 
+	 * @return HashMap in key value pairs
+	 */
+	public static HashMap<String, String> getSettingFileLines(InputStream is) {
+		Properties p = new Properties();
+		try {
+			p.load(is);
+			is.close();
+		} catch (IOException e) {
+			writeToLogFile(e);
+		}
+		Set<Object> tmp = p.keySet();
+		HashMap<String, String> out = new HashMap<String, String>();
+		for (Object i : tmp) {
+			out.put(i.toString(), p.getProperty(i.toString()));
+		}
+		return out;
+	}
+
+	/**
+	 * Takes the output from mame -lx [gamename] and create a file containing
+	 * romset information
+	 * 
+	 * @param pOutput
+	 *            Collection containing the output from mame
+	 * @param m
+	 *            the Mamerom to process
+	 * @param file
+	 *            To write the romset information to
+	 */
+	public static void createGameFiles(Collection<? extends String> pOutput,
+			MameRom m, File file) throws IOException {
+		StringBuilder xmlOutput = new StringBuilder();
+		for (String i : pOutput) {
+			xmlOutput.append(i + "\n");
+		}
+		Document d = null;
+		try {
+			d = DocumentBuilderFactory
+					.newInstance()
+					.newDocumentBuilder()
+					.parse(new ByteArrayInputStream(xmlOutput.toString()
+							.getBytes("UTF-8")));
+			d.getDocumentElement().normalize();
+		} catch (SAXParseException e) {
+			writeToLogFile(e);
+			return;
+		} catch (SAXException e) {
+			writeToLogFile(e);
+			return;
+		} catch (ParserConfigurationException e) {
+			writeToLogFile(e);
+			return;
+		}
+
+		NodeList list = d.getElementsByTagName("mame");
+		for (int i = 0; i < list.getLength(); i++) {
+			if (list.item(i).getNodeType() == Node.ELEMENT_NODE) {
+				Element e = (Element) list.item(i);
+				Properties p = new Properties();
+				FileOutputStream fos = new FileOutputStream(file);
+				p.setProperty("year", getElement(e, "year"));
+				p.setProperty("description", getElement(e, "description"));
+				p.setProperty("manufacturer", getElement(e, "manufacturer"));
+				p.setProperty("emulation_state", (m.isGoodRom()) ? "good"
+						: "best available");
+
+				p.store(fos, null);
+				fos.close();
+
+				return;
+			}
+		}
+	}
+
+	static String getElement(Element e, String tagName) {
+		try {
+			return e.getElementsByTagName(tagName).item(0).getTextContent();
+		} catch (NullPointerException ex) {
+			return "????";
+		}
+	}
+
+	/**
+	 * Create and set values of a settings file
+	 * 
+	 * @param file
+	 *            file to write to
+	 * @param data
+	 *            the data to write to file
+	 */
+	public static void createSettingsFile(File file,
+			HashMap<String, String> data) throws IOException {
+		Properties p = new Properties();
+		FileOutputStream fos = new FileOutputStream(file);
+		for (String i : data.keySet()) {
+			p.setProperty(i, data.get(i));
+		}
+
+		p.store(fos, null);
+		fos.close();
+	}
+
+	public static String getMameIniValue(MameExecutable me, String key) {
+		ArrayList<String> ini = readFile(new File(me.getIniPath() + "/mame.ini"));
+		for (String i : ini) {
+			if (i.startsWith(key + " ")) {
+				String[] items = i.split(" ");
+				for (String j : items) {
+					if (!j.equals("") && !j.equals(key))
+						return j;
+				}
+			}
+		}
+		return null;
+	}
+
+	public static void changeMameIniValue(MameExecutable me, String key,
+			String newValue) {
+		File iniFile = me.getIniFile();
+		ArrayList<String> ini = readFile(iniFile);
+		for (String i : ini) {
+			if (i.startsWith(key + " ")) {
+				StringBuilder line = new StringBuilder(key);
+				while (line.length() < 26) {
+					line.append(" ");
+				}
+				line.append(newValue);
+				ini.set(ini.indexOf(i), line.toString());
+				FileIO.writeTofile(ini, iniFile, false);
+			}
+		}
+	}
+
+	/**
+	 * Runs and gets the output from a system process
+	 * 
+	 * @param cmd
+	 *            The command to be ran
+	 * @param stdErr
+	 *            Include error stream in return
+	 * @return ArrayList<String> if there was output otherwise null
+	 */
+	public static ArrayList<String> getProcessOutput(String cmd, boolean stdErr) {
+		ArrayList<String> out = new ArrayList<String>(0);
+		try {
+			Process p = Runtime.getRuntime().exec(cmd);
+
+			BufferedReader br = new BufferedReader(new InputStreamReader(
+					p.getInputStream()));
+
+			String line = null;
+			while ((line = br.readLine()) != null) {
+				out.add(line);
+			}
+
+			if (stdErr) {
+				br = new BufferedReader(new InputStreamReader(
+						p.getErrorStream()));
+				while ((line = br.readLine()) != null) {
+					out.add(line);
+				}
+			}
+			br.close();
+			if (out.size() == 0) {
+				out = null;
+			}
+		} catch (IOException e) {
+			FileIO.writeToLogFile(e);
+		}
+		return out;
+	}
+
+	/**
+	 * Unzip a file
+	 * 
+	 * @param zip
+	 *            file to be unzipped
+	 * @param ouputDirectory
+	 *            where to write the zip to
+	 */
+	public static void unZip(File zip, String ouputDirectory)
+			throws IOException {
+		File dir = new File(ouputDirectory);
+		if (!dir.exists()) {
+			dir.mkdir();
+		}
+
+		ZipInputStream zis = new ZipInputStream(new FileInputStream(zip));
+		byte[] buffer = new byte[1024];
+		for (ZipEntry ze = zis.getNextEntry(); ze != null; ze = zis
+				.getNextEntry()) {
+
+			String fileName = ze.getName();
+			File tmp = new File(dir, fileName);
+
+			new File(tmp.getParent()).mkdirs();
+
+			FileOutputStream fos = new FileOutputStream(tmp);
+
+			int len;
+			while ((len = zis.read(buffer)) > 0) {
+				fos.write(buffer, 0, len);
+			}
+
+			fos.close();
+		}
+		zis.close();
+
+	}
+
+	/**
+	 * Copy a file to a new location
+	 * <p>
+	 * Creates destination directory if it doesn't exist
+	 * 
+	 * @param file
+	 *            The File to be copied
+	 * @param destDir
+	 *            Where the File will be copied to
+	 * @param setExec
+	 *            Set the file as executable
+	 */
+	public static void copyFile(File file, File destDir, boolean setExec)
+			throws IOException {
+		FileInputStream is = null;
+		FileOutputStream os = null;
+
+		if (!destDir.isDirectory()) {
+			destDir.mkdir();
+		}
+
+		try {
+			byte[] buffer = new byte[1024];
+			is = new FileInputStream(file);
+			os = new FileOutputStream(new File(destDir, file.getName()));
+			int i = 0;
+			while ((i = is.read(buffer)) > 0) {
+				os.write(buffer, 0, i);
+			}
+			new File(destDir, file.getName()).setExecutable(setExec, true);
+		} finally {
+			if (is != null)
+				is.close();
+			if (os != null)
+				os.close();
+		}
+	}
+
+	public static void setLogDir(File file) {
+		logDir = file;
+	}
+
+}/*
+ * This file is part of JMameUI.
+ * 
+ * JMameUI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * JMameUI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with JMameUI.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package jmameui.mame;
+
+
+public class MameRom implements Comparable<MameRom>{
+	private String name = "";
+	private String MamePath = "";
+	private boolean goodRom = false;
+	private String year = "";
+	private String manufacturer = "";
+	private String description = "";
+	private String emuState = "";
+	private boolean favourite = false;
+	private String mameVersion;
+	private String genre = "";
+	private String clone = "";
+	
+	public MameRom(String name,String mPath, boolean gr){
+		this.name = name;
+		this.MamePath = mPath;
+		this.goodRom = gr;
+	}
+
+	public String getGenre() {
+		return genre;
+	}
+	
+	public String getClone() {
+		return clone;
+	}
+
+	public void setClone(String clone) {
+		this.clone = clone;
+	}
+
+
+
+	public void setGenre(String genre) {
+		this.genre = genre;
+	}
+
+	public MameRom(String name){
+	  this.name = name;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+	
+	public String getMamePath() {
+		return MamePath;
+	}
+	
+	public void setMamePath(String mameVersion) {
+		MamePath = mameVersion;
+	}
+	
+	public void setMameVersion(String mameVersion) {
+		this.mameVersion = mameVersion;
+	}
+	public String getMameVersion() {
+		return mameVersion;
+	}
+
+
+	public boolean isGoodRom() {
+		return goodRom;
+	}
+
+	public void setGoodRom(boolean goodRom) {
+		this.goodRom = goodRom;
+	}
+
+	public String getYear() {
+		return year;
+	}
+
+	public void setYear(String year) {
+		this.year = year;
+	}
+
+	public String getManufacturer() {
+		return manufacturer;
+	}
+
+	public void setManufacturer(String manufacturer) {
+		this.manufacturer = manufacturer;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+	
+	public String getEmuState() {
+		return emuState;
+	}
+
+	public void setEmuState(String emuState) {
+		this.emuState = emuState;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((name == null) ? 0 : name.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if(obj instanceof MameRom){
+			if(name == ((MameRom)obj).getName()){
+				return true;
+			}
+		}
+		return false;
+	}
+
+	@Override
+	public String toString() {
+		return "MameRom [name=" + name + "]";
+	}
+
+	@Override
+	public int compareTo(MameRom o) {
+		return name.compareTo(o.getName());
+	}
+
+	public boolean isFavourite() {
+		return favourite;
+	}
+
+	public void setFavourite(boolean favourite) {
+		this.favourite = favourite;
+	}
+	
+	
+}

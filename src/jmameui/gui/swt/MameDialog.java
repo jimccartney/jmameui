@@ -35,118 +35,118 @@ import org.eclipse.swt.widgets.Text;
 
 public class MameDialog {
 
-    public static final int WARNING = 0;
-    public static final int INFORMATION = 1;
-    public static final int TEXTAREA = 2;
-    public static final int ERROR = 3;
+	public static final int WARNING = 0;
+	public static final int INFORMATION = 1;
+	public static final int TEXTAREA = 2;
+	public static final int ERROR = 3;
 
-    private Shell dialogShell;
-    private Image icon;
-    private ArrayList<String> data = new ArrayList<String>();
-    private SelectionAdapter closeAdapter = new SelectionAdapter() {
-	public void widgetSelected(SelectionEvent arg0) {
-	    dialogShell.dispose();
-	    super.widgetSelected(arg0);
+	private Shell dialogShell;
+	private Image icon;
+	private ArrayList<String> data = new ArrayList<String>();
+	private SelectionAdapter closeAdapter = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			dialogShell.dispose();
+			super.widgetSelected(arg0);
+		}
+	};
+
+	public MameDialog(Shell owner, Collection<? extends String> text, int option) {
+		dialogShell = new Shell(owner, SWT.RESIZE);
+		data = new ArrayList<String>(text);
+		start(option);
 	}
-    };
 
-    public MameDialog(Shell owner, Collection<? extends String> text, int option) {
-	dialogShell = new Shell(owner, SWT.RESIZE);
-	data = new ArrayList<String>(text);
-	start(option);
-    }
-
-    public MameDialog(Shell owner, String text, int option) {
-	dialogShell = new Shell(owner, SWT.RESIZE);
-	data.add(text);
-	start(option);
-    }
-
-    public MameDialog(Shell owner, int option) {
-	start(option);
-    }
-
-    private void start(int option) {
-	switch (option) {
-	case TEXTAREA:
-	    initTEXTAREA();
-	    break;
-	case WARNING:
-	    icon = Display.getDefault().getSystemImage(SWT.ICON_WARNING);
-	    InitInformation(false);
-	    break;
-	case INFORMATION:
-	    icon = Display.getDefault().getSystemImage(SWT.ICON_INFORMATION);
-	    InitInformation(false);
-	    break;
-	case ERROR:
-	    icon = Display.getDefault().getSystemImage(SWT.ICON_ERROR);
-	    InitInformation(true);
-	    break;
+	public MameDialog(Shell owner, String text, int option) {
+		dialogShell = new Shell(owner, SWT.RESIZE);
+		data.add(text);
+		start(option);
 	}
-	dialogShell.open();
-    }
 
-    private void InitInformation(boolean err) {
-	dialogShell.setLayout(new GridLayout(2, false));
-	dialogShell.setText("JMameUI");
-
-	Label iconLab = new Label(dialogShell, SWT.NONE);
-	iconLab.setImage(icon);
-	iconLab.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
-
-	Label txtLab = new Label(dialogShell, SWT.NONE);
-	txtLab.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
-	StringBuilder sb = new StringBuilder();
-	for (String i : data) {
-	    sb.append(i + "\n");
+	public MameDialog(Shell owner, int option) {
+		start(option);
 	}
-	txtLab.setText(sb.toString());
 
-	Button logBtn = new Button(dialogShell, SWT.PUSH);
-	logBtn.setText("View Log");
-	logBtn.addSelectionListener(new SelectionAdapter() {
-	    @Override
-	    public void widgetSelected(SelectionEvent e) {
-		new MameDialog(dialogShell,
-			FileIO.readFile(FileIO.getLogFile()), TEXTAREA);
-	    }
-	});
-	logBtn.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
-
-	if (err && !FileIO.getLogFile().exists()) {
-	    logBtn.setEnabled(false);
-	}else if (!err) {
-	    logBtn.setVisible(false);
+	private void start(int option) {
+		switch (option) {
+		case TEXTAREA:
+			initTEXTAREA();
+			break;
+		case WARNING:
+			icon = Display.getDefault().getSystemImage(SWT.ICON_WARNING);
+			InitInformation(false);
+			break;
+		case INFORMATION:
+			icon = Display.getDefault().getSystemImage(SWT.ICON_INFORMATION);
+			InitInformation(false);
+			break;
+		case ERROR:
+			icon = Display.getDefault().getSystemImage(SWT.ICON_ERROR);
+			InitInformation(true);
+			break;
+		}
+		dialogShell.open();
 	}
-	
-	Button btn = new Button(dialogShell, SWT.PUSH);
-	btn.setText("Close");
-	btn.addSelectionListener(closeAdapter);
-	btn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
-	dialogShell.pack();
-    }
 
-    private void initTEXTAREA() {
-	dialogShell.setText("JMameUI");
-	dialogShell.setLayout(new GridLayout(1, false));
-	Text text = new Text(dialogShell, SWT.BORDER | SWT.WRAP | SWT.V_SCROLL
-		| SWT.H_SCROLL);
-	text.setEditable(false);
-	StringBuilder sb = new StringBuilder();
-	for (String i : data) {
-	    sb.append(i + "\n");
+	private void InitInformation(boolean err) {
+		dialogShell.setLayout(new GridLayout(2, false));
+		dialogShell.setText("JMameUI");
+
+		Label iconLab = new Label(dialogShell, SWT.NONE);
+		iconLab.setImage(icon);
+		iconLab.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
+
+		Label txtLab = new Label(dialogShell, SWT.NONE);
+		txtLab.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
+		StringBuilder sb = new StringBuilder();
+		for (String i : data) {
+			sb.append(i + "\n");
+		}
+		txtLab.setText(sb.toString());
+
+		Button logBtn = new Button(dialogShell, SWT.PUSH);
+		logBtn.setText("View Log");
+		logBtn.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				new MameDialog(dialogShell,
+						FileIO.readFile(FileIO.getLogFile()), TEXTAREA);
+			}
+		});
+		logBtn.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+
+		if (err && !FileIO.getLogFile().exists()) {
+			logBtn.setEnabled(false);
+		} else if (!err) {
+			logBtn.setVisible(false);
+		}
+
+		Button btn = new Button(dialogShell, SWT.PUSH);
+		btn.setText("Close");
+		btn.addSelectionListener(closeAdapter);
+		btn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+		dialogShell.pack();
 	}
-	text.append(sb.toString());
-	text.setSelection(0);
-	GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
-	gridData.heightHint = 5 * text.getLineHeight();
-	text.setLayoutData(gridData);
-	Button closeBtn = new Button(dialogShell, SWT.PUSH);
-	closeBtn.setText("Close");
-	closeBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
-	closeBtn.addSelectionListener(closeAdapter);
-	dialogShell.setSize(640,480);
-    }
+
+	private void initTEXTAREA() {
+		dialogShell.setText("JMameUI");
+		dialogShell.setLayout(new GridLayout(1, false));
+		Text text = new Text(dialogShell, SWT.BORDER | SWT.WRAP | SWT.V_SCROLL
+				| SWT.H_SCROLL);
+		text.setEditable(false);
+		StringBuilder sb = new StringBuilder();
+		for (String i : data) {
+			sb.append(i + "\n");
+		}
+		text.append(sb.toString());
+		text.setSelection(0);
+		GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
+		gridData.heightHint = 5 * text.getLineHeight();
+		text.setLayoutData(gridData);
+		Button closeBtn = new Button(dialogShell, SWT.PUSH);
+		closeBtn.setText("Close");
+		closeBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+		closeBtn.addSelectionListener(closeAdapter);
+		dialogShell.setSize(640, 480);
+	}
 
 }

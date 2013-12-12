@@ -120,6 +120,12 @@ public abstract class SWTJMameUI {
 		}
 	};
 
+	SelectionAdapter helpAdapter = new SelectionAdapter() {
+		public void widgetSelected(SelectionEvent arg0) {
+			new HelpDialog(shell);
+		}
+	};
+
 	SelectionAdapter tabChangeListener = new SelectionAdapter() {
 		public void widgetSelected(SelectionEvent arg0) {
 			if (tabs.getSelectionIndex() == 2 && searchField != null) {
@@ -222,12 +228,13 @@ public abstract class SWTJMameUI {
 		if (text.equals("")) {
 			return false;
 		}
-		
+
 		gCon.refreshMainSettings();
 		HashMap<String, String> ops = gCon.getSearchOptions();
-		for(String i:gCon.getTableColumnsNames()){
-			if(Boolean.parseBoolean(ops.get(i.toLowerCase()+"_search"))){
-				if(gCon.getMameRomOption(i, m).toLowerCase().contains(text)){
+		for (String i : gCon.getTableColumnsNames()) {
+			if (Boolean.parseBoolean(ops.get(i.toLowerCase().replace(" ", "_")
+					+ "_search"))) {
+				if (gCon.getMameRomOption(i, m).toLowerCase().contains(text)) {
 					return true;
 				}
 			}
@@ -304,9 +311,10 @@ public abstract class SWTJMameUI {
 		return tmp;
 	}
 
-	public Image loadImage(String fileName) {
-		return new Image(Display.getDefault(), this.getClass().getClassLoader()
-				.getResourceAsStream("jmameui/gui/icons/" + fileName));
+	public static Image loadImage(String fileName) {
+		return new Image(Display.getDefault(), SWTJMameUI.class
+				.getClassLoader().getResourceAsStream(
+						"jmameui/gui/icons/" + fileName));
 
 	}
 
@@ -345,7 +353,8 @@ public abstract class SWTJMameUI {
 			for (TableColumn j : i.getColumns()) {
 				j.pack();
 				if (!Boolean.parseBoolean(ops.get(j.getText().toLowerCase()
-						.replace(" ", "_")+"_column_visible"))) {
+						.replace(" ", "_")
+						+ "_column_visible"))) {
 					j.setWidth(0);
 					j.setResizable(false);
 				}
